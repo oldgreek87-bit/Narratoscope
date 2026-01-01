@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Bookflix • Vintage Desktop</title>
+  <style>
+    /* Пиксельные шрифты (офлайн). Положи файлы в assets/fonts/ */
+    @font-face{font-family:'Pixel UI';src:url('assets/fonts/PixelOperator.ttf') format('truetype');font-weight:400;font-style:normal;font-display:swap}
+    @font-face{font-family:'Pixel UI';src:url('assets/fonts/PixelOperator-Bold.ttf') format('truetype');font-weight:700;font-style:normal;font-display:swap}
+    /* Доп. пиксельный шрифт с кириллицей */
+    @font-face{font-family:'FSEX';src:url('assets/fonts/FSEX300.ttf') format('truetype');font-weight:400;font-style:normal;font-display:swap}
+    /* ╔══════════════════════════════════════════════════════════════════════╗
+       ║  CORE UI СТИЛИ: ВИНТАЖНЫЙ РАБОЧИЙ СТОЛ (Windows-95 вайб)            ║
+       ║  Всё, что ниже, — ядро. Модули имеют собственные блоки CSS/JS.      ║
+       ╚══════════════════════════════════════════════════════════════════════╝ */
+
+    :root {
+      --bg: #018281;           /* стартовый фон (бирюзовый Win95 вайб) */
+      --panel: #c0c7c8;           /* базовые цвета (часть может не использоваться) */
+      --panel-dark: #000;
+      --panel-light: #fff;
+      --text: #111;
+      --accent: #000;
+      --accent-2: #000;
+      --shadow: rgba(0,0,0,.15);
+      --icon-size: 180px;
+      --window-min-w: 360px;
+      --window-min-h: 220px;
+      --taskbar-h: 36px;
+      --z-window: 10; --z-menu: 30; --z-boot: 1000;
+
+      --ui-font: 'FSEX','Pixel UI','Press Start 2P', ui-monospace, "Courier New", monospace;
+      --ui-font-size: 20px; /* базовый размер в окнах */
+      --font-ui: 20px;           /* = --ui-font-size (для удобства) */
+      --font-title: 16px;        /* заголовки окон */
+      --font-icon: 26px;         /* подписи под иконками на рабочем столе */
+      --font-controls: 16px;     /* кнопки/inputs внутри окон */
+      --ui-line: 1.3;
+    }
+
+    html, body { height: 100%; }
+    body {
+      margin: 0; overflow: hidden; height: 100dvh; width: 100vw;
+      background: var(--bg);
+      font-family: var(--ui-font); font-size: var(--font-ui); line-height: var(--ui-line);
+      color: var(--text);
+      image-rendering: pixelated; image-rendering: crisp-edges;
+      /* ПИКСЕЛЬНЫЙ БЕЛЫЙ КУРСОР */
+      cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M1 1 L1 13 L5 9 L9 13 L11 11 L7 7 L11 3 Z" fill="white" stroke="black" stroke-width="1"/></svg>') 1 1, default;
+    }
+
+    .desktop { position: relative; inset: 0; height: calc(100% - var(--taskbar-h)); width: 100%; padding: 12px; box-sizing: border-box; user-select: none; }
+
+    /* ИКОНКИ */
+    .icon { position: absolute; width: var(--icon-size); height: var(--icon-size); display: grid; align-content: center; justify-items: center; color: white; text-align: center; font-size: 12px; filter: drop-shadow(0 1px 0 rgba(0,0,0,.25)); transition: transform .05s linear; }
+    .icon:active { transform: scale(0.98); }
+
+    .glyph { width: 168px; height: 168px; position: relative; image-rendering: pixelated; background-size: cover; }
+    /* Если подставляем PNG — полностью прозрачный фон, используем саму картинку */
+    .glyph.has-image{ background-color: transparent; background-repeat: no-repeat; background-position: center; background-size: contain; }
+
+    /* Подпись иконки — крупнее и ближе */
+    .icon .label { margin-top: 2px; padding: 2px 6px; border: 1px dashed transparent; border-radius: 0; background: transparent; color: #fff; text-shadow: none; line-height: 1.2; font-size: var(--font-icon); letter-spacing:.3px; }
+    /* Выделение «как в Win95»: бегущие муравьи */
+    .icon.selected .label { background: #1b4b8c; color: #fff; border-color: #dfe7ff; animation: ants 1s linear infinite; background-image: linear-gradient(90deg, rgba(255,255,255,.25) 50%, rgba(255,255,255,0) 50%); background-size: 8px 100%; }
+    @keyframes ants { from { background-position: 0 0; } to { background-position: 8px 0; } }
+
+    /* Контекстное меню */
+    .context-menu { position: fixed; z-index: var(--z-menu); background: #fff; border: 2px solid #000; box-shadow: 6px 6px 0 #00000020; min-width: 180px; font-size: var(--font-controls); }
+    .context-item { padding: 8px 12px; cursor: default; }
+    .context-item:hover { background: #000; color:#fff; }
+    .context-sep { height: 2px; background: #000; margin: 4px 0; }
+
+    /* Окна */
+    .window { position: absolute; top: 80px; left: 120px; min-width: var(--window-min-w); min-height: var(--window-min-h); background: #fff; border: 2px solid #000; box-shadow: 0 8px 18px rgba(0,0,0,.15); display: grid; grid-template-rows: 28px 1fr; z-index: var(--z-window); }
+    .titlebar { background: #fff; color: #000; font-weight: 700; padding: 0 8px; display: grid; grid-template-columns: 1fr auto; align-items: center; user-select: none; cursor: move; letter-spacing: .4px; font-size: var(--font-title); border-bottom: 2px solid #000; }
+    .titlebar .buttons { display: flex; gap: 4px; }
+    .titlebar button { height: 20px; width: 22px; border: 2px solid #000; background: #fff; cursor: pointer; image-rendering: pixelated; font-weight: 700; line-height: 1; display:flex; align-items:center; justify-content:center; padding:0; font-family: var(--ui-font); }
+    .titlebar button:hover { background: #000; color: #fff; } /* hover оставляем как был */
+    .content { padding: 12px; background: #fff; color:#000; overflow: auto; }
+    .resizer { position: absolute; right: 0; bottom: 0; width: 12px; height: 12px; background: #000; mask: linear-gradient(45deg, #000 0 50%, transparent 50% 100%); -webkit-mask: linear-gradient(45deg, #000 0 50%, transparent 50% 100%); cursor: nwse-resize; }
+
+    /* Кнопки и формы внутри окон — ч/б пиксельный стиль */
+    .content button,
+    .content input[type="button"],
+    .content input[type="submit"]{
+      border:2px solid #000; background:#fff; padding:6px 10px; cursor:pointer;
+      font-family:var(--ui-font); font-size: var(--font-controls); letter-spacing:.2px; image-rendering:pixelated;
+    }
+    .content button:hover,
+    .content input[type="button"]:hover,
+    .content input[type="submit"]:hover{ background:#000; color:#fff; }
+
+    .content input[type="text"],
+    .content textarea,
+    .content select{
+      border:2px solid #000; background:#fff; padding:6px; font-family:var(--ui-font);
+      font-size: var(--font-controls); box-sizing:border-box;
+    }
+    .content textarea{ resize:vertical; }
+
+    /* Статус отправки формы (пиксельный текст под кнопкой) */
+    .form-status{ margin-top:8px; font-family: var(--ui-font); font-size: var(--font-controls); line-height:1.2; }
+    .form-status.ok{ color:#067d00; }
+    .form-status.err{ color:#9b0000; }
+
+    /* Выравнивание символов в кнопках окна */
+    .titlebar .buttons button:first-child { /* Свернуть — "—" */
+      font-size: 14px; transform: translateY(-1px);
+    }
+    .titlebar .buttons button:last-child { /* Закрыть — "×" */
+      font-size: 16px; transform: translateY(-1px);
+    }
+
+    /* Панель задач */
+    .taskbar { position: absolute; bottom: 0; left: 0; right: 0; height: var(--taskbar-h); background: #f2f2f2; border-top: 2px solid #000; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; padding: 0 8px; box-sizing: border-box; }
+    .start { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border: 2px solid #000; background: #fff; cursor: pointer; font-weight: 700; image-rendering: pixelated; }
+    .tasks { display: flex; gap: 6px; align-items: center; overflow: auto; }
+    .task-btn { height: 26px; padding: 0 10px; border: 2px solid #000; background: #fff; cursor: pointer; white-space: nowrap; }
+    .clock { padding: 0 10px; border: 2px solid #000; background: #fff; }
+
+    .start-menu{ position:absolute; left:8px; bottom:calc(var(--taskbar-h) + 4px); width:360px; background:#fff; border:2px solid #000; box-shadow:0 8px 18px rgba(0,0,0,.15); z-index:var(--z-menu); display:grid; grid-template-rows:auto 1fr; }
+    .start-head{ background:#fff; color:#000; font-weight:700; padding:8px; border-bottom:2px solid #000; font-size:var(--font-title); letter-spacing:.3px; }
+    .start-body{ padding:12px; }
+   
+   /* Виджет-качалка */
+    .rocker-widget{
+      position:fixed; right:12px; bottom:calc(var(--taskbar-h) - 2px);
+      width:160px; height:160px;
+      background:transparent url('assets/ui/rocker-pixel.svg') center/contain no-repeat;
+      image-rendering:pixelated; z-index:25; cursor:pointer;
+      border:none; outline:none; box-shadow:none; padding:0;
+      -webkit-appearance:none; appearance:none; background-color:transparent;
+    }
+    @keyframes rock{ 0%{ transform:rotate(-2deg);} 50%{transform:rotate(2deg);} 100%{transform:rotate(-2deg);} }
+    .rocker-widget{ animation: rock 4s ease-in-out infinite; transform-origin: 50% 95%; }
+    @keyframes rock{ 0%{ transform:rotate(-2deg);} 50%{transform:rotate(2deg);} 100%{transform:rotate(-2deg);} }
+    .rocker-widget{ animation: rock 4s ease-in-out infinite; transform-origin: 50% 90%; }
+
+    /* Загрузочный экран */
+    .boot { position: fixed; inset: 0; background: #000; color: #0ff; display: grid; place-items: center; z-index: var(--z-boot); font-family: "Courier New", ui-monospace, monospace; user-select: none; }
+    .boot .box { text-align: center; }
+    .boot .bar { width: min(60vw, 560px); height: 10px; border: 1px solid #0ff; margin-top: 12px; }
+    .boot .bar > i { display: block; height: 100%; width: 0%; background: #0ff; }
+
+    .hidden { display: none !important; }
+    .noselect { user-select: none; }
+
+/* ───────────────────────────── CRT FX (опционально) ─────────────────────────────
+       Убирается одной секцией. Эффект кинескопа: скан‑линии, виньетка, мягкое мерцание. */
+    :root{
+      --crt-scan-opacity: .06;   /* стало светлее: половина плотности линий */
+      --crt-vignette: .12;       /* мягче виньетка */
+      --crt-flicker-min: .996;   /* тишe мерцание (оставляем) */
+      --crt-flicker-max: .998;   /* тишe мерцание (оставляем) */
+      --crt-opacity: .45;        /* общая прозрачность CRT‑слоя */
+    }
+    .crt { pointer-events:none; position:fixed; inset:0; z-index:9999; opacity: var(--crt-opacity); }
+    /* Лёгкая «кривизна» без SVG — перспективный наклон контейнеров */
+    
+    /* Слой 1: скан‑линии с лёгким дрейфом */
+    .crt::before{ content:""; position:absolute; inset:0;
+      background: repeating-linear-gradient(
+        to bottom,
+        rgba(0,0,0,var(--crt-scan-opacity)) 0px,
+        rgba(0,0,0,var(--crt-scan-opacity)) 2px,
+        rgba(0,0,0,0) 3px,
+        rgba(0,0,0,0) 4px
+      );
+      animation: crt-scan 14s linear infinite;
+      mix-blend-mode: multiply;
+    }
+    /* Слой 2: виньетка и лёгкое свечение по центру */
+    .crt::after{ content:""; position:absolute; inset:0;
+      background:
+        radial-gradient(ellipse at center, rgba(255,255,255,.03) 0%, rgba(255,255,255,0) 55%),
+        radial-gradient(ellipse at center, rgba(0,0,0,var(--crt-vignette)) 70%, rgba(0,0,0,.25) 100%);
+      mix-blend-mode: multiply;
+      animation: crt-flicker 10s steps(80,end) infinite;
+    }
+    @keyframes crt-scan { 0% { background-position: 0 0; } 100% { background-position: 0 120px; } }
+    @keyframes crt-flicker {
+      0%   { opacity: var(--crt-flicker-max); }
+      45%  { opacity: var(--crt-flicker-min); }
+      50%  { opacity: var(--crt-flicker-max); }
+      92%  { opacity: var(--crt-flicker-min); }
+      100% { opacity: var(--crt-flicker-max); }
+    }
+  </style>
+  <!-- EmailJS SDK (defer, чтобы был доступен к моменту инициализации) -->
+  <script defer src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+</head>
+<body>
+  <!-- Рабочий стол и системные элементы -->
+  <div id="desktop" class="desktop" aria-label="Bookflix Desktop"></div>
+
+  <!-- Водяной знак и виджет с качалкой -->
+  <button id="rockerWidget" class="rocker-widget" title="О клубе" onclick="try{DesktopCore.openModule('about')}catch(e){}"></button>
+
+  <div class="taskbar" role="toolbar">
+    <button class="start" id="startBtn" title="Start">★ Start</button>
+    <div id="taskspace" class="tasks"></div>
+    <div class="clock" id="clock">--:--</div>
+  </div>
+
+  <div id="ctx" class="context-menu hidden" role="menu"></div>
+
+  <div id="crtFx" class="crt" aria-hidden="true"></div>
+
+  <div id="boot" class="boot">
+    <div class="box">
+      <div>BOOKFLIX OS v0.2</div>
+      <div>© 2025 Bookflix—editor workstation</div>
+      <div class="bar"><i id="bootbar"></i></div>
+    </div>
+  </div>
+
+  <div id="startMenu" class="start-menu hidden" role="menu" aria-label="Start menu">
+    <div class="start-head">Добро пожаловать в Bookflix OS! Нажимай на папки и исследуй.</div>
+    <div class="start-body">
+      <button type="button" onclick="window.open('https://t.me/bookflix_bot','_blank')">Вступить в клуб</button>
+    </div>
+  </div>
+
+  <script>
+    /* ╔══════════════════════════════════════════════════════════════════════╗
+       ║                               CORE                                  ║
+       ║  • Регистрация модулей • Рендер иконок • Drag&Drop • Контекстное     ║
+       ║    меню • Окна (свернуть/закрыть/resize) • Часы • Таскбар‑кнопки    ║
+       ╚══════════════════════════════════════════════════════════════════════╝ */
+
+    /* ===== Обои рабочего стола =====
+   Положи картинки в assets/wallpapers/ с такими именами или замени на свои.
+   Список циклично переключается через ПКМ → «Сменить фон». Первая запись — чёрный. */
+const WALLPAPERS = [
+  // Монофоны
+  { type:'color', value:'#018281' },       // старт — винтажная бирюза
+  { type:'color', value:'#000000' },       // чёрный
+  { type:'color', value:'#1d1f22' },       // тёмный графит
+
+  // CSS‑паттерны (без картинок) — пиксельные и неброские
+  { type:'css', color:'#0d0f10', css:'linear-gradient(#1a1a1a 1px, transparent 1px), linear-gradient(90deg, #1a1a1a 1px, transparent 1px)', size:'16px 16px,16px 16px', position:'0 0,0 0', repeat:'repeat' }, // клетка
+  { type:'css', color:'#0d0d0d', css:'radial-gradient(#1b1b1b 1px, transparent 1px), radial-gradient(#1b1b1b 1px, transparent 1px)', size:'12px 12px,12px 12px', position:'0 0,6px 6px', repeat:'repeat' }, // точечная сетка
+  { type:'css', color:'#0e0e0e', css:'repeating-linear-gradient(45deg, #121212 0 10px, #161616 10px 20px)', repeat:'repeat' }, // диагональные полосы
+  { type:'css', color:'#101010', css:'linear-gradient(45deg, #101010 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #101010 75%), linear-gradient(45deg, #101010 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #101010 75%)', size:'20px 20px,20px 20px,20px 20px,20px 20px', position:'0 0,0 10px,10px -10px,-10px 0', repeat:'repeat' }, // чекерборд
+  { type:'css', color:'#021a1a', css:'linear-gradient(180deg, #021a1a 0%, #013a39 100%)', repeat:'no-repeat' }, // тёмный градиент «океан»
+
+  // (опционально) Файловые — если положишь изображения
+  { type:'image', value:'assets/wallpapers/win95-tiles.png',  size:'auto',   position:'left top', repeat:'repeat' },
+  { type:'image', value:'assets/wallpapers/retro-stars.png',  size:'auto',   position:'left top', repeat:'repeat' },
+  { type:'image', value:'assets/wallpapers/pixel-paper.png',  size:'cover',  position:'center',  repeat:'no-repeat' },
+  { type:'image', value:'assets/wallpapers/pixel-grid-dark.png', size:'cover', position:'center', repeat:'no-repeat' }
+];
+let WP_INDEX = 0;
+function applyWallpaper(){
+  const wp = WALLPAPERS[WP_INDEX] || WALLPAPERS[0];
+  const body = document.body.style;
+  body.backgroundAttachment = 'fixed';
+  if (wp.type === 'image') {
+    body.backgroundColor = '#000';
+    body.backgroundImage = `url('${wp.value}')`;
+    body.backgroundPosition = wp.position || 'center';
+    body.backgroundSize = wp.size || 'cover';
+    body.backgroundRepeat = wp.repeat || 'no-repeat';
+  } else if (wp.type === 'css') {
+    body.backgroundColor = wp.color || '#000';
+    body.backgroundImage = wp.css; // строка из нескольких градиентов через запятую
+    body.backgroundPosition = wp.position || '0 0';
+    body.backgroundSize = wp.size || 'auto';
+    body.backgroundRepeat = wp.repeat || 'repeat';
+  } else { // color
+    body.backgroundImage = 'none';
+    body.backgroundColor = wp.value;
+    body.backgroundRepeat = 'no-repeat';
+    body.backgroundSize = 'auto';
+    body.backgroundPosition = '0 0';
+  }
+}
+function nextWallpaper(){ WP_INDEX = (WP_INDEX + 1) % WALLPAPERS.length; applyWallpaper(); }
+applyWallpaper();
+
+const DesktopCore = (() => {
+      const desktop = document.getElementById('desktop');
+      const taskspace = document.getElementById('taskspace');
+      const ctx = document.getElementById('ctx');
+      const clock = document.getElementById('clock');
+      const startBtn = document.getElementById('startBtn');
+
+      const registry = new Map();         // id -> module API
+      const iconState = new Map();        // id -> {x,y}
+      const windows = new Map();          // winId -> {el, taskBtn, minimized}
+
+      const uid = () => Math.random().toString(36).slice(2, 9);
+      const bringToFront = (el) => {
+        let maxZ = 10; document.querySelectorAll('.window').forEach(w => {
+          const z = parseInt(getComputedStyle(w).zIndex || 10, 10); if (z > maxZ) maxZ = z; });
+        el.style.zIndex = maxZ + 1; };
+
+      /* Часы */
+      const tickClock = () => { const n = new Date(); clock.textContent = `${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`; };
+      setInterval(tickClock, 1000); tickClock();
+
+      /* Start */
+      function toggleStart(force){ const show = force ?? startMenu.classList.contains('hidden'); startMenu.classList.toggle('hidden', !show); if (show) bringToFront(startMenu); }
+      startBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleStart(); });
+      startMenu.addEventListener('click', (e) => e.stopPropagation());
+      document.addEventListener('click', () => toggleStart(false));
+      document.addEventListener('keydown', (e) => { if (e.key === 'Escape') toggleStart(false); });
+
+      /* Контекстное меню */
+      let ctxTarget = null;
+      const hideContext = () => { ctx.classList.add('hidden'); ctxTarget = null; };
+      const showContext = (x, y, items, target=null) => {
+        ctx.innerHTML = '';
+        items.forEach(item => {
+          if (item === 'sep') { const s = document.createElement('div'); s.className = 'context-sep'; ctx.appendChild(s); return; }
+          const d = document.createElement('div'); d.className = 'context-item'; d.textContent = item.label;
+          d.addEventListener('click', () => { item.action?.(target); hideContext(); }); ctx.appendChild(d);
+        });
+        const { innerWidth, innerHeight } = window;
+        ctx.style.left = Math.min(x, innerWidth - 180) + 'px';
+        ctx.style.top  = Math.min(y, innerHeight - 120) + 'px';
+        ctx.classList.remove('hidden');
+        ctxTarget = target;
+      };
+      document.addEventListener('click', (e) => { if (!ctx.contains(e.target)) hideContext(); });
+
+      /* Таскбар-кнопки */
+      const createTaskButton = (winEl, title) => {
+        const b = document.createElement('button'); b.className = 'task-btn'; b.textContent = title;
+        b.addEventListener('click', () => {
+          const info = windows.get(winEl.dataset.winId); if (!info) return;
+          if (info.minimized) { info.el.classList.remove('hidden'); info.minimized = false; bringToFront(info.el); }
+          else { bringToFront(info.el); }
+        }); taskspace.appendChild(b); return b; };
+
+      /* Окна */
+      const createWindow = ({ title = 'Окно', content, width = 760, height = 520 }={}) => {
+        const w = document.createElement('div'); w.className = 'window';
+        w.style.width = width + 'px'; w.style.height = height + 'px'; w.dataset.winId = uid();
+
+        // Центрируем новое окно на рабочем столе
+        const dRect = desktop.getBoundingClientRect();
+        const left = Math.max(12, Math.round((dRect.width  - width)  / 2));
+        const top  = Math.max(12, Math.round((dRect.height - height) / 2));
+        w.style.left = left + 'px';
+        w.style.top  = top  + 'px';
+
+        const tb = document.createElement('div'); tb.className = 'titlebar'; tb.innerHTML = `<span>${title}</span>`;
+        const btns = document.createElement('div'); btns.className = 'buttons';
+        const min = document.createElement('button'); min.title = 'Свернуть'; min.textContent = '—';
+        const close = document.createElement('button'); close.title = 'Закрыть'; close.textContent = '×';
+        btns.appendChild(min); btns.appendChild(close); tb.appendChild(btns); w.appendChild(tb);
+
+        const cont = document.createElement('div'); cont.className = 'content';
+        if (typeof content === 'string') cont.innerHTML = content; else if (content instanceof Node) cont.appendChild(content);
+        w.appendChild(cont);
+
+        const rz = document.createElement('div'); rz.className = 'resizer'; w.appendChild(rz);
+
+        /* Перетаскивание */
+        let ox=0, oy=0, dragging=false;
+        tb.addEventListener('mousedown', (e) => { dragging = true; bringToFront(w); const r = w.getBoundingClientRect(); ox = e.clientX - r.left; oy = e.clientY - r.top; document.body.classList.add('noselect'); });
+        window.addEventListener('mousemove', (e) => { if (!dragging) return; w.style.left = (e.clientX - ox) + 'px'; w.style.top = (e.clientY - oy) + 'px'; });
+        window.addEventListener('mouseup', () => { dragging = false; document.body.classList.remove('noselect'); });
+
+        /* Resize */
+        let resizing=false, rx=0, ry=0, startW=0, startH=0;
+        rz.addEventListener('mousedown', (e)=>{ resizing = true; bringToFront(w); rx = e.clientX; ry = e.clientY; const r = w.getBoundingClientRect(); startW = r.width; startH = r.height; document.body.classList.add('noselect'); });
+        window.addEventListener('mousemove', (e)=>{ if (!resizing) return; const root = getComputedStyle(document.documentElement); const minW = parseInt(root.getPropertyValue('--window-min-w')); const minH = parseInt(root.getPropertyValue('--window-min-h')); const nw = Math.max(startW + (e.clientX - rx), minW); const nh = Math.max(startH + (e.clientY - ry), minH); w.style.width = nw + 'px'; w.style.height = nh + 'px'; });
+        window.addEventListener('mouseup', ()=>{ resizing=false; document.body.classList.remove('noselect'); });
+
+        /* Кнопки */
+        const taskBtn = createTaskButton(w, title);
+        min.addEventListener('click', () => { w.classList.add('hidden'); const info = windows.get(w.dataset.winId); if (info) info.minimized = true; });
+        close.addEventListener('click', () => { const id = w.dataset.winId; const info = windows.get(id); info?.taskBtn?.remove(); windows.delete(id); w.remove(); });
+
+        w.addEventListener('mousedown', () => bringToFront(w));
+        desktop.appendChild(w); bringToFront(w);
+        windows.set(w.dataset.winId, { el: w, taskBtn, minimized: false });
+        return w;
+      };
+
+      /* Иконки */
+      const createIcon = ({ id, title, className='', iconUrl, x=20, y=20, onOpen, contextItems }) => {
+        const el = document.createElement('div'); el.className = 'icon'; el.style.left = x + 'px'; el.style.top = y + 'px'; el.dataset.id = id;
+        const g = document.createElement('div'); g.className = 'glyph ' + className; if (iconUrl) { g.classList.add('has-image'); g.style.backgroundImage = `url('${iconUrl}')`; } el.appendChild(g);
+        const lab = document.createElement('div'); lab.className = 'label'; lab.textContent = title; el.appendChild(lab);
+
+        el.addEventListener('click', () => { document.querySelectorAll('.icon').forEach(i => i.classList.remove('selected')); el.classList.add('selected'); });
+
+        let lastClick = 0; el.addEventListener('mouseup', () => { const now = Date.now(); if (now - lastClick < 300) { onOpen?.(); } lastClick = now; });
+
+        /* Drag&Drop */
+        let dragging=false, dx=0, dy=0;
+        el.addEventListener('mousedown', (e) => { if (e.button !== 0) return; dragging = true; dx = e.clientX - el.offsetLeft; dy = e.clientY - el.offsetTop; });
+        window.addEventListener('mousemove', (e) => { if (!dragging) return; el.style.left = (e.clientX - dx) + 'px'; el.style.top = (e.clientY - dy) + 'px'; });
+        window.addEventListener('mouseup', () => { if (!dragging) return; dragging = false; iconState.set(id, { x: el.offsetLeft, y: el.offsetTop }); });
+
+        el.addEventListener('contextmenu', (e) => { e.preventDefault(); e.stopPropagation(); const items = contextItems ? contextItems() : defaultIconMenu(onOpen); showContext(e.clientX, e.clientY, items, el); });
+
+        desktop.appendChild(el); return el; };
+
+      const defaultIconMenu = (onOpen) => ([ { label: 'Открыть', action: () => onOpen?.() }, { label: 'Печать…', action: () => window.print() }, { label: 'Поделиться…', action: async () => { try { await navigator.share?.({ title: 'Bookflix', url: location.href }) } catch {} } }, ]);
+
+      /* ===== Обои / логотип ===== */
+      /* ПКМ по рабочему столу: смена фона / обновить */
+      desktop.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        showContext(e.clientX, e.clientY, [
+          { label: 'Сменить фон', action: () => nextWallpaper() },
+          { label: 'Обновить', action: () => location.reload() },
+        ]);
+      });
+
+      /* API ядра */
+      function openModule(id){ const mod = registry.get(id); mod?.onOpen?.(); }
+      return { register(def) { if (!def?.id) throw new Error('Модуль без id!'); registry.set(def.id, def); }, spawnWindow: createWindow, spawnIcon(def) { return createIcon(def); }, getIconPosition(id, fb) { return iconState.get(id) || fb; }, showContext, hideContext, get registry() { return registry; }, openModule };
+    })();
+
+    /* ╔══════════════════════════════════════════════════════════════════════╗
+       ║                         МОДУЛИ (plug‑and‑play)                       ║
+       ╚══════════════════════════════════════════════════════════════════════╝ */
+
+    /* МОДУЛЬ: Мой компьютер */
+    DesktopCore.register({ id: 'my-computer', title: 'Мой компьютер', iconClass: '', iconUrl: 'assets/icons/my-computer.png',
+      onOpen() { DesktopCore.spawnWindow({ title: 'Мой компьютер', width: 740, height: 520, content: `<p><b>Bookflix OS</b> — редакторский компьютер. Тут будут диски и утилиты.</p>` }); }
+    });
+
+    /* МОДУЛЬ: Корзина + восстановление early_draft.txt */
+    const TRASH_FILES = [ {
+      id: 'early_draft',
+      name: 'txt',            // имя иконки в корзине и на рабочем столе
+      type: 'txt',
+      icon: 'assets/icons/txt.png', // положи png-иконку txt сюда
+      content: `Chapter One: The Discovery
+City K., November 2025
+The meeting was supposed to be about the magazine.
+Lida had booked the small lecture hall in the Faculty of Sciences building for three o'clock on a Tuesday. They'd been running their online English book club for two years now—steady membership, decent engagement, enough momentum to justify thinking bigger. And now, what she really craved was the validation that came with two years of steady growth. When they'd started the club, it had felt like shouting into the void—would anyone actually show up to discuss "The Reading List" on a Sunday morning? Would their actual reading lists find an audience beyond the three of them?
+Now, with nearly two hundred regular members and discussions that sometimes ran past midnight, Lida felt something she'd never experienced before: the confidence that maybe they could create something that mattered. A magazine had always been her secret dream, filed away in the same mental drawer as "learn Italian" and "travel to Iceland." But dreams were different when you had people who might actually read what you wrote. 
+The lecture hall hadn't changed much since the 70s. The linoleum floor was the color of weak tea and carried a faint medicinal smell, like a dentist's office. Dust motes floated lazily in the bars of sunlight that angled through high windows. The overhead lights buzzed softly, one of them flickering as if in protest.
+Rows of gray plastic chairs lined the space like bored sentinels, and the whiteboard still bore the ghost of equations no one had fully erased. Someone had left a stack of storage boxes on the small stage, covered with dust sheets like furniture in an abandoned house. Everything in the room suggested abandoned potential — the kind of place ideas went to nap.
+It was the perfect setting for either a thesis meeting or the opening scene of a haunting.
+Lida arrived first, as always, carrying her leather messenger bag and wearing a burgundy sweater with cream-colored thread spelling out a quote across the chest: "Millennium publishes what others dare not print." She had a habit of personalizing her mass-market clothing this way—buying cheap sweaters and cardigans, then stitching literary quotes onto them to make them feel more like her own. This particular quote from Larsson's trilogy felt appropriate for someone about to launch her own small rebellion against the literary establishment.
+Misha appeared exactly ten minutes later, shaking snow from his dark hair. His cheeks were red from the cold—he'd obviously walked rather than taken the tram.
+"You're practically glowing," he said, settling into the third row with his notebook. "I haven't seen you this excited since you discovered that Joyce actually had a sense of humor."`
+    } ];
+
+    DesktopCore.register({ id: 'trash', title: 'Корзина', iconClass: '', iconUrl: 'assets/icons/trash.png',
+  onOpen() {
+    const wrap = document.createElement('div');
+    const grid = document.createElement('div');
+    grid.style.display = 'grid';
+    grid.style.gridTemplateColumns = 'repeat(auto-fill, 120px)';
+    grid.style.gap = '16px';
+
+    const render = () => {
+      grid.innerHTML = '';
+      if (TRASH_FILES.length === 0) {
+        grid.innerHTML = '<div style="opacity:.6">(пусто)</div>';
+        return;
+      }
+      TRASH_FILES.forEach(f => {
+        const cell = document.createElement('div');
+        cell.style.width = '120px';
+        cell.style.textAlign = 'center';
+        cell.style.userSelect = 'none';
+
+        const ico = document.createElement('div');
+        ico.style.width = '96px';
+        ico.style.height = '96px';
+        ico.style.margin = '0 auto';
+        ico.style.backgroundImage = `url('${f.icon || 'assets/icons/txt.png'}')`;
+        ico.style.backgroundRepeat = 'no-repeat';
+        ico.style.backgroundPosition = 'center';
+        ico.style.backgroundSize = 'contain';
+        ico.style.imageRendering = 'pixelated';
+
+        const cap = document.createElement('div');
+        cap.textContent = f.name; // просто "txt"
+        cap.style.marginTop = '6px';
+
+        // ПКМ: единственный пункт «Восстановить» (глушим всплытие)
+        const showRestore = (ev) => {
+          ev.preventDefault();
+          ev.stopPropagation();
+          DesktopCore.showContext(ev.clientX, ev.clientY, [
+            {
+              label: 'Восстановить',
+              action: () => {
+                createTextFileIcon(f);
+                const i = TRASH_FILES.findIndex(x => x.id === f.id);
+                if (i >= 0) TRASH_FILES.splice(i, 1);
+                render();
+              }
+            }
+          ], cell);
+        };
+        [cell, ico, cap].forEach(el => el.addEventListener('contextmenu', showRestore));
+        // Двойной клик отключён — восстановление только через ПКМ
+
+        cell.appendChild(ico);
+        cell.appendChild(cap);
+        grid.appendChild(cell);
+      });
+    };
+
+    render();
+    wrap.appendChild(grid);
+    DesktopCore.spawnWindow({ title: 'Корзина', width: 520, height: 420, content: wrap });
+  }
+});
+
+function createTextFileIcon(file) {
+  DesktopCore.spawnIcon({
+    id: 'file-'+file.id,
+    title: file.name,           // будет "txt"
+    className: 'txt',
+    iconUrl: file.icon || 'assets/icons/txt.png',
+    x: 220 + Math.random()*120,
+    y: 70 + Math.random()*120,
+    onOpen() {
+      DesktopCore.spawnWindow({
+        title: file.name,
+        width: 640,
+        height: 460,
+        content: `<pre style="white-space: pre-wrap">${file.content}</pre>`
+      });
+    }
+  });
+}
+
+/* МОДУЛЬ: О клубе */
+    const aboutContent = `<p><b>Bookflix</b> — английский книжный клуб нового поколения. Каждый месяц читаем одну книгу, обсуждаем в Telegram, учим лексику, играем в квизы и получаем призы. Издаём журнал и делаем подписные коробки с сюрпризами!</p>`;
+    DesktopCore.register({ id: 'about', title: 'О клубе', iconClass: '', iconUrl: 'assets/icons/about.png',
+      onOpen() { DesktopCore.spawnWindow({ title: 'О клубе', width: 720, height: 480, content: aboutContent }); }
+    });
+
+    /* МОДУЛЬ: Заметки */
+    const notesContent = `<ul><li><b>Reading Pace Guide:</b> Календарь чтения</li><li><b>Quizlet:</b> Модули с лексикой</li><li><b>Speaking Prompts:</b> Вопросы для обсуждения</li><li><b>Читательские заметки:</b> Иллюстрации и комментарии</li></ul>`;
+    DesktopCore.register({ id: 'notes', title: 'Заметки', iconClass: '', iconUrl: 'assets/icons/notes.png',
+      onOpen() { DesktopCore.spawnWindow({ title: 'Заметки', width: 680, height: 460, content: notesContent }); }
+    });
+
+    /* МОДУЛЬ: FAQ Yeah */
+    const faqContent = `<h3>FAQ Yeah</h3><ul><li>Как вступить? — Оформите подписку и присоединяйтесь к Telegram.</li><li>Не силён в английском? — Есть адаптированные версии и словари.</li><li>Что в годовой подписке? — Журнал, коробка, встречи, гайды и др.</li></ul>`;
+    DesktopCore.register({ id: 'faq', title: 'FAQ Yeah', iconClass: '', iconUrl: 'assets/icons/faq.png',
+      onOpen() { DesktopCore.spawnWindow({ title: 'FAQ Yeah', width: 680, height: 460, content: faqContent }); }
+    });
+
+    /* МОДУЛЬ: Книга месяца */
+    const bookContent = `<div style="display:grid; grid-template-columns: 160px 1fr; gap: 14px; align-items:start;"><div style="width:140px;height:190px;background:#111;color:#fff;display:grid;place-items:center;">Обложка</div><div><h3>Heartwood — Amity Gaige</h3><p><i>Аннотация:</i> «В глубине лесов штата Мэн бесследно исчезает опытная путешественница…»</p><p><b>Уровни:</b> Оригинал (B2–C2) и адаптация (A2–B1)</p><button onclick="alert('Старт чтения! (логика позже)')">Начать читать</button></div></div>`;
+    DesktopCore.register({ id: 'book', title: 'Книга месяца', iconClass: '', iconUrl: 'assets/icons/book.png',
+      onOpen() { DesktopCore.spawnWindow({ title: 'Книга месяца', width: 760, height: 520, content: bookContent }); }
+    });
+
+    /* МОДУЛЬ: Оригами‑библиотека */
+    DesktopCore.register({ id: 'origami', title: 'Оригами‑библиотека', iconClass: '', iconUrl: 'assets/icons/origami.png',
+      onOpen() { DesktopCore.spawnWindow({ title: 'Оригами‑библиотека', width: 680, height: 460, content: '<p>Наши маленькие бумажные книжечки — коллекция мини‑текстов и иллюстраций. (Позже: галерея и инструкции.)</p>' }); }
+    });
+
+    /* МОДУЛЬ: Магазин */
+    DesktopCore.register({ id: 'shop', title: 'Магазин', iconClass: '', iconUrl: 'assets/icons/shop.png',
+      onOpen() { DesktopCore.spawnWindow({ title: 'Магазин', width: 720, height: 480, content: '<p>Обложки журналов и кнопки «Купить». (Подключим позже)</p>' }); }
+    });
+
+    /* МОДУЛЬ: Журнал */
+    const journalContent = `<div><h3>Журнал Bookflix</h3><p>Фанфики, интервью с книжными персонажами, обзоры, викторины. Всё — по‑настоящему и по любви.</p><p><b>Темы:</b> море, ненадёжные рассказчики, символизм, путешествия…</p><button onclick="alert('Онлайн‑чтение позже')">Читать онлайн</button> <button onclick="alert('PDF позже')">Скачать PDF</button></div>`;
+    DesktopCore.register({ id: 'journal', title: 'Журнал', iconClass: '', iconUrl: 'assets/icons/journal.png',
+      onOpen() { DesktopCore.spawnWindow({ title: 'Журнал', width: 720, height: 520, content: journalContent }); }
+    });
+
+    /* МОДУЛЬ: Контакты */
+    const contactsContent = `<p><b>Контакты и соцсети</b></p>
+<p>
+  <button type=\"button\" onclick=\"window.open('https://t.me/bookflix_bot','_blank')\">Telegram</button>
+  <button type=\"button\" onclick=\"window.open('mailto:hello@bookflix.ru','_self')\">Email</button>
+</p>
+<form id=\"contactForm\" onsubmit=\"return sendContactEmail(this)\">
+  <div style=\"display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px\">
+    <input type=\"text\" name=\"name\" placeholder=\"Имя\" required>
+    <input type=\"email\" name=\"email\" placeholder=\"Email\" required>
+  </div>
+  <label>Сообщение<br>
+    <textarea name=\"message\" rows=\"5\" style=\"width:100%\" placeholder=\"Хочешь написать в журнал? Порекомендовать книгу?…\" required></textarea>
+  </label>
+  <br>
+  <button type=\"submit\" id=\"contactSend\">Отправить</button>
+  <div class=\"form-status\" id=\"contactStatus\" aria-live=\"polite\"></div>
+</form>`;
+    DesktopCore.register({ id: 'contacts', title: 'Контакты', iconClass: '', iconUrl: 'assets/icons/contacts.png',
+      onOpen() { DesktopCore.spawnWindow({ title: 'Контакты', width: 660, height: 480, content: contactsContent }); }
+    });
+
+    /* МОДУЛЬ: Цены */
+    const priceContent = `<h3>Подписка</h3><table border=\"1\" cellspacing=\"0\" cellpadding=\"6\" style=\"background:#fff\"><tr><th>Период</th><th>Цена</th></tr><tr><td>Месяц</td><td>890 рублей</td></tr><tr><td>Год</td><td>7500 рублей</td></tr></table>`;
+    DesktopCore.register({ id: 'price', title: 'Price', iconClass: '', iconUrl: 'assets/icons/price.png',
+      onOpen() { DesktopCore.spawnWindow({ title: 'Цены', width: 420, height: 300, content: priceContent }); }
+    });
+
+    // Порядок появления иконок (фиксированный)
+const layout = [
+  'my-computer',  // Мой компьютер (верхний левый)
+  'book',         // Книга месяца (верхний ряд)
+  'shop',         // Магазин (верхний ряд)
+  'trash',        // Корзина (правый верх)
+  'about',        // О клубе (второй ряд, левый)
+  'journal',      // Журнал (второй ряд)
+  'contacts',     // Контакты (второй ряд, правее)
+  'notes',        // Заметки (третий ряд, левый)
+  'faq',          // FAQ Yeah (третий ряд)
+  'origami',      // Оригами‑библиотека (нижний ряд, левый)
+  'price'         // Price (нижний ряд)
+];
+    // Фиксированная раскладка (проценты от рабочей области)
+    const USE_FIXED_LAYOUT = true;
+    const FIXED_POS = {
+  'my-computer':  { xPct: 6,  yPct: 10 },
+  'book':         { xPct: 22, yPct: 10 },
+  'shop':         { xPct: 38, yPct: 10 },
+  'trash':        { xPct: 94, yPct: 10 },
+
+  'about':        { xPct: 6,  yPct: 30 },
+  'journal':      { xPct: 22, yPct: 30 },
+  'contacts':     { xPct: 38, yPct: 30 },
+
+  'notes':        { xPct: 6,  yPct: 50 },
+  'faq':          { xPct: 22, yPct: 50 },
+
+  'origami':      { xPct: 6,  yPct: 72 },
+  'price':        { xPct: 22, yPct: 72 }
+};
+
+    function bootSequence() {
+      const bar = document.getElementById('bootbar'); let p = 0; const t = setInterval(() => { p += Math.random()*18; if (p >= 100) { p = 100; clearInterval(t); document.getElementById('boot').classList.add('hidden'); } bar.style.width = p + '%'; }, 220);
+    }
+
+    // Применяем стартовый (бирюзовый) фон и включаем логотип
+    function applyInitialWallpaper(){
+      WP_INDEX = 0; // стартуем с бирюзового
+      applyWallpaper();
+    }
+
+    function initDesktop() {
+      const deskEl = document.querySelector('.desktop');
+      const maxW = deskEl.clientWidth; const maxH = deskEl.clientHeight;
+      const root = getComputedStyle(document.documentElement);
+      const ICON = parseInt(root.getPropertyValue('--icon-size')) || 180;
+      const PAD = 24; // внутренний отступ от краёв
+
+      // helper: проценты → пиксели
+      const pctToPx = (p) => ({
+        x: Math.round((maxW - ICON) * (p.xPct/100)),
+        y: Math.round((maxH - ICON) * (p.yPct/100))
+      });
+
+      const taken = [];
+      const placeOne = () => {
+        for (let tries = 0; tries < 200; tries++) {
+          const x = Math.floor(Math.random() * (maxW - ICON - PAD*2)) + PAD;
+          const y = Math.floor(Math.random() * (maxH - ICON - PAD*2)) + PAD;
+          let ok = true;
+          for (const t of taken) {
+            if (Math.abs(x - t.x) < ICON * 0.9 && Math.abs(y - t.y) < ICON * 0.9) { ok = false; break; }
+          }
+          if (ok) return { x, y };
+        }
+        return { x: PAD + Math.random() * (maxW - ICON - PAD*2), y: PAD + Math.random() * (maxH - ICON - PAD*2) };
+      };
+
+      layout.forEach((id) => {
+        const mod = DesktopCore.registry.get(id); if (!mod) return;
+        const saved = DesktopCore.getIconPosition(id, null);
+        const pos = saved || (USE_FIXED_LAYOUT && FIXED_POS[mod.id] ? pctToPx(FIXED_POS[mod.id]) : placeOne());
+        taken.push(pos);
+        DesktopCore.spawnIcon({ id: mod.id, title: mod.title, className: mod.iconClass, iconUrl: mod.iconUrl, x: pos.x, y: pos.y, onOpen: mod.onOpen, contextItems: mod.contextItems });
+      });
+    }
+
+    window.addEventListener('load', () => { bootSequence(); initDesktop(); applyInitialWallpaper(); });
+  
+  /* ===== EmailJS: отправка формы "Контакты" ===== */
+  const EMAILJS = {
+    publicKey: '2tIA7HOru8fWVPVci',
+    serviceId: 'service_etttwdi',
+    templateId: 'template_ekfvye8'
+  };
+  
+  function initEmailJS(){
+    // Ждём, пока SDK загрузится (если ещё не успел). Затем инициализируем publicKey.
+    const MAX_TRIES = 40; let tries = 0;
+    const tick = () => {
+      if (window.emailjs && typeof emailjs.init === 'function') {
+        try { emailjs.init(EMAILJS.publicKey); } catch(e) { console.error('EmailJS init error:', e); }
+        return;
+      }
+      if (++tries < MAX_TRIES) setTimeout(tick, 150);
+    };
+    tick();
+  }
+  
+  function sendContactEmail(form){
+    if (!window.emailjs){ setStatus('contactStatus','Сервис отправки временно недоступен.',false); return false; }
+    if (!EMAILJS.serviceId || EMAILJS.serviceId.includes('SERVICE_ID_HERE')){ setStatus('contactStatus','Не настроен Service ID EmailJS.',false); return false; }
+    const data = { title:'Contact form', name: form.name.value.trim(), email: form.email.value.trim(), message: form.message.value.trim() };
+    const btn = form.querySelector('button[type=submit]');
+    const statusEl = form.querySelector('#contactStatus');
+    btn.disabled = true; setStatus('contactStatus','Отправка…', true);
+    emailjs.send(EMAILJS.serviceId, EMAILJS.templateId, data)
+      .then((res) => { console.log('EmailJS OK:', res); form.reset(); setStatus('contactStatus','Спасибо! Сообщение отправлено.', true, 'ok'); })
+      .catch(err => { console.error('EmailJS SEND error:', err); setStatus('contactStatus','Не удалось отправить письмо. Попробуйте ещё раз.', false, 'err'); })
+      .finally(() => { btn.disabled = false; });
+    return false;
+  }
+  initEmailJS();
+
+  // helper: вывести статус под кнопкой
+  function setStatus(id, text, ok, cls){
+    const el = document.getElementById(id); if(!el) return; el.textContent = text; el.classList.remove('ok','err'); if (cls) el.classList.add(cls);
+  }
+  </script>
+
+
+
+
