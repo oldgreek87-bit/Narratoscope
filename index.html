@@ -17,12 +17,13 @@
 
     :root {
       --bg-paper: #F4F1EC;      /* warm off-white, Xerox Star style */
+      --ink: #14110F;            /* softened black for UI ink/paper */
       --panel: #faf8f5;         /* базовый цвет панелей */
       --panel-dark: #000;
       --panel-light: #fff;
-      --text: #000;
-      --accent: #000;
-      --accent-2: #000;
+      --text: #14110F;
+      --accent: #14110F;
+      --accent-2: #14110F;
       --icon-size: 180px;
       --window-min-w: 360px;
       --window-min-h: 220px;
@@ -50,13 +51,25 @@
       color: var(--text);
       image-rendering: pixelated; image-rendering: crisp-edges;
       /* ПИКСЕЛЬНЫЙ ЧЕРНЫЙ КУРСОР */
-      cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M1 1 L1 13 L5 9 L9 13 L11 11 L7 7 L11 3 Z" fill="black" stroke="black" stroke-width="1"/></svg>') 1 1, default;
+      cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" shape-rendering="crispEdges"><path d="M1 1 L1 13 L5 9 L9 13 L11 11 L7 7 L11 3 Z" fill="black" stroke="black" stroke-width="1"/></svg>') 1 1, default;
     }
 
-    .desktop { position: relative; inset: 0; height: calc(100% - var(--taskbar-h)); width: 100%; padding: 12px; box-sizing: border-box; user-select: none; }
+    .desktop { 
+      position: relative; 
+      inset: 0; 
+      height: calc(100% - var(--taskbar-h)); 
+      width: 100%; 
+      padding: 12px; 
+      box-sizing: border-box; 
+      user-select: none;
+      background-image: url('assets/icons/wallpaper.png');
+      background-repeat: no-repeat;
+      background-position: center;
+      background-size: auto;
+    }
 
     /* ИКОНКИ */
-    .icon { position: absolute; width: var(--icon-size); height: var(--icon-size); display: grid; align-content: center; justify-items: center; color: #000; text-align: center; font-size: 12px; transition: transform .05s linear; }
+    .icon { position: absolute; width: var(--icon-size); height: var(--icon-size); display: grid; align-content: center; justify-items: center; color: #000; text-align: center; font-size: 12px; transition: transform .05s linear; cursor: pointer; }
     .icon:active { transform: scale(0.98); }
 
     .glyph { width: 168px; height: 168px; position: relative; image-rendering: pixelated; background-size: cover; }
@@ -64,18 +77,18 @@
     .glyph.has-image{ background-color: transparent; background-repeat: no-repeat; background-position: center; background-size: contain; }
 
     /* Подпись иконки — крупнее и ближе */
-    .icon .label { margin-top: 2px; padding: 2px 6px; border: 1px dashed transparent; border-radius: 0; background: transparent; color: #000; text-shadow: none; line-height: 1.2; font-size: var(--font-icon); letter-spacing:.3px; }
+    .icon .label { margin-top: 2px; padding: 2px 6px; border: 1px dashed transparent; border-radius: 0; background: transparent; color: var(--ink); text-shadow: none; line-height: 1.2; font-size: var(--font-icon); letter-spacing:.3px; }
     /* Выделение: инвертированные цвета */
-    .icon.selected .label { background: #000; color: #fff; border-color: #000; }
+    .icon.selected .label { background: var(--ink); color: #fff; border-color: var(--ink); }
 
     /* Контекстное меню */
-    .context-menu { position: fixed; z-index: var(--z-menu); background: #fff; border: 2px solid #000; min-width: 180px; font-size: var(--font-controls); }
+    .context-menu { position: fixed; z-index: var(--z-menu); background: #fff; border: 2px solid var(--ink); min-width: 180px; font-size: var(--font-controls); }
     .context-item { padding: 8px 12px; cursor: default; }
-    .context-item:hover { background: #000; color:#fff; }
-    .context-sep { height: 2px; background: #000; margin: 4px 0; }
+    .context-item:hover { background: var(--ink); color:#fff; }
+    .context-sep { height: 2px; background: var(--ink); margin: 4px 0; }
 
     /* Окна */
-    .window { position: absolute; top: 80px; left: 120px; min-width: var(--window-min-w); min-height: var(--window-min-h); background: #fff; border: 2px solid #000; display: grid; grid-template-rows: 26px 1fr; z-index: var(--z-window); }
+    .window { position: absolute; top: 80px; left: 120px; min-width: var(--window-min-w); min-height: var(--window-min-h); background: var(--bg-paper); border: 2px solid var(--ink); display: grid; grid-template-rows: 26px 1fr; z-index: var(--z-window); }
     .titlebar { 
       position: relative;
       height: 26px; 
@@ -88,7 +101,7 @@
       justify-content: flex-end;
       user-select: none; 
       cursor: move; 
-      border-bottom: 1px solid #000; 
+      border-bottom: 1px solid var(--ink); 
     }
     .title-label {
       position: absolute;
@@ -97,56 +110,59 @@
       transform: none;
       background: #fff;
       padding: 1px 6px;
-      border: 1px solid #000;
+      border: 1px solid var(--ink);
       display: inline-block;
       font-weight: 700;
       font-size: var(--font-title);
       letter-spacing: .4px;
-      color: #000;
+      color: var(--ink);
       white-space: nowrap;
       line-height: 1;
-      -webkit-clip-path: polygon(4px 0, calc(100% - 4px) 0, calc(100% - 3px) 1px, calc(100% - 2px) 2px, calc(100% - 1px) 3px, 100% 4px, 100% calc(100% - 4px), calc(100% - 1px) calc(100% - 3px), calc(100% - 2px) calc(100% - 2px), calc(100% - 3px) calc(100% - 1px), calc(100% - 4px) 100%, 4px 100%, 3px calc(100% - 1px), 2px calc(100% - 2px), 1px calc(100% - 3px), 0 calc(100% - 4px), 0 4px, 1px 3px, 2px 2px, 3px 1px);
-      clip-path: polygon(4px 0, calc(100% - 4px) 0, calc(100% - 3px) 1px, calc(100% - 2px) 2px, calc(100% - 1px) 3px, 100% 4px, 100% calc(100% - 4px), calc(100% - 1px) calc(100% - 3px), calc(100% - 2px) calc(100% - 2px), calc(100% - 3px) calc(100% - 1px), calc(100% - 4px) 100%, 4px 100%, 3px calc(100% - 1px), 2px calc(100% - 2px), 1px calc(100% - 3px), 0 calc(100% - 4px), 0 4px, 1px 3px, 2px 2px, 3px 1px);
+      -webkit-clip-path: polygon(3px 0, calc(100% - 3px) 0, calc(100% - 2px) 1px, calc(100% - 1px) 2px, 100% 3px, 100% calc(100% - 3px), calc(100% - 1px) calc(100% - 2px), calc(100% - 2px) calc(100% - 1px), calc(100% - 3px) 100%, 3px 100%, 2px calc(100% - 1px), 1px calc(100% - 2px), 0 calc(100% - 3px), 0 3px, 1px 2px, 2px 1px);
+      clip-path: polygon(3px 0, calc(100% - 3px) 0, calc(100% - 2px) 1px, calc(100% - 1px) 2px, 100% 3px, 100% calc(100% - 3px), calc(100% - 1px) calc(100% - 2px), calc(100% - 2px) calc(100% - 1px), calc(100% - 3px) 100%, 3px 100%, 2px calc(100% - 1px), 1px calc(100% - 2px), 0 calc(100% - 3px), 0 3px, 1px 2px, 2px 1px);
     }
     .titlebar .buttons { display: flex; gap: 4px; }
-    .titlebar button { height: 20px; width: 22px; border: 2px solid #000; background: #fff; cursor: pointer; image-rendering: pixelated; font-weight: 700; line-height: 1; display:flex; align-items:center; justify-content:center; padding:0; font-family: var(--ui-font); }
-    .titlebar button:hover { background: #000; color: #fff; }
-    .content { padding: 12px; background: #fff; color:#000; overflow: auto; }
-    .resizer { position: absolute; right: 0; bottom: 0; width: 0; height: 0; border-left: 12px solid transparent; border-top: 12px solid transparent; border-right: 12px solid #000; border-bottom: 12px solid #000; cursor: nwse-resize; }
+    .titlebar button { height: 20px; width: 22px; border: 2px solid var(--ink); background: #fff; cursor: pointer; image-rendering: pixelated; font-weight: 700; line-height: 1; display:flex; align-items:center; justify-content:center; padding:0; font-family: var(--ui-font); }
+    .titlebar button:hover { background: var(--ink); color: #fff; }
+    .content { padding: 12px; background: var(--bg-paper); color:var(--ink); overflow: auto; }
+    .resizer { position: absolute; right: 0; bottom: 0; width: 0; height: 0; border-left: 12px solid transparent; border-top: 12px solid transparent; border-right: 12px solid var(--ink); border-bottom: 12px solid var(--ink); cursor: nwse-resize; }
 
     /* Кнопки и формы внутри окон — ч/б пиксельный стиль */
     .content button,
     .content input[type="button"],
     .content input[type="submit"]{
-      border:1px solid #000; background:#fff; padding:6px 10px; cursor:pointer;
+      border:1px solid var(--ink); background:#fff; padding:6px 10px; cursor:pointer;
       font-family:var(--ui-font); font-size: var(--font-controls); letter-spacing:.2px; image-rendering:pixelated;
     }
     .content button:hover,
     .content input[type="button"]:hover,
-    .content input[type="submit"]:hover{ background:#000; color:#fff; }
+    .content input[type="submit"]:hover{ background:var(--ink); color:#fff; }
 
     .content input[type="text"],
     .content textarea,
     .content select{
-      border:1px solid #000; background:#fff; padding:6px; font-family:var(--ui-font);
+      border:1px solid var(--ink); background:var(--bg-paper); padding:6px; font-family:var(--ui-font);
       font-size: var(--font-controls); box-sizing:border-box;
       image-rendering: pixelated;
+      cursor: text;
     }
     
     /* Internal UI lines - rasterized, pixel-constructed */
     .content hr {
       border: none;
-      border-top: 1px solid #000;
+      border-top: 1px solid var(--ink);
       margin: 12px 0;
       height: 0;
     }
     .content table {
       border-collapse: separate;
       border-spacing: 0;
+      background: var(--bg-paper);
     }
     .content table td,
     .content table th {
-      border: 1px solid #000;
+      border: 1px solid var(--ink);
+      background: var(--bg-paper);
     }
     .content textarea{ resize:vertical; }
 
@@ -185,15 +201,15 @@
     .task-btn { 
       height: 26px; 
       padding: 0 10px; 
-      border: 1px solid #000; 
+      border: 1px solid var(--ink); 
       background-color: #FFFFFF;
       cursor: pointer; 
       white-space: nowrap;
     }
-    .clock { padding: 0 10px; border: 1px solid #000; background: #fff; }
+    .clock { padding: 0 10px; border: 1px solid var(--ink); background: #fff; }
 
-    .start-menu{ position:absolute; left:8px; bottom:calc(var(--taskbar-h) + 4px); width:360px; background:#fff; border:2px solid #000; z-index:var(--z-menu); display:grid; grid-template-rows:auto 1fr; }
-    .start-head{ background:#fff; color:#000; font-weight:700; padding:8px; border-bottom:2px solid #000; font-size:var(--font-title); letter-spacing:.3px; }
+    .start-menu{ position:absolute; left:8px; bottom:calc(var(--taskbar-h) + 4px); width:360px; background:#fff; border:2px solid var(--ink); z-index:var(--z-menu); display:grid; grid-template-rows:auto 1fr; }
+    .start-head{ background:#fff; color:var(--ink); font-weight:700; padding:8px; border-bottom:2px solid var(--ink); font-size:var(--font-title); letter-spacing:.3px; }
     .start-body{ padding:12px; }
    
    /* Виджет-качалка */
@@ -224,15 +240,15 @@
       font-family: var(--ui-font); 
       user-select: none; 
     }
-    .password-box { background: #fff; border: 2px solid #000; padding: 24px 32px; text-align: center; }
+    .password-box { background: #fff; border: 2px solid var(--ink); padding: 24px 32px; text-align: center; }
     .password-box h2 { margin: 0 0 16px 0; font-size: 18px; font-weight: 700; }
     .password-box p { margin: 0 0 20px 0; font-size: 14px; }
     .password-inputs { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 20px; }
-    .password-inputs input { border: 2px solid #000; background: #fff; padding: 8px; font-family: var(--ui-font); font-size: 14px; text-transform: capitalize; text-align: center; }
-    .password-inputs input:focus { outline: 2px solid #000; outline-offset: 2px; }
+    .password-inputs input { border: 2px solid var(--ink); background: #fff; padding: 8px; font-family: var(--ui-font); font-size: 14px; text-transform: capitalize; text-align: center; }
+    .password-inputs input:focus { outline: 2px solid var(--ink); outline-offset: 2px; }
     .password-error { color: #9b0000; font-size: 12px; margin-top: 8px; min-height: 16px; }
-    .password-box button { border: 2px solid #000; background: #fff; padding: 8px 16px; cursor: pointer; font-family: var(--ui-font); font-size: 14px; font-weight: 700; }
-    .password-box button:hover { background: #000; color: #fff; }
+    .password-box button { border: 2px solid var(--ink); background: #fff; padding: 8px 16px; cursor: pointer; font-family: var(--ui-font); font-size: 14px; font-weight: 700; }
+    .password-box button:hover { background: var(--ink); color: #fff; }
 
     /* Загрузочный экран */
     .boot { 
@@ -249,8 +265,8 @@
       user-select: none; 
     }
     .boot .box { text-align: center; }
-    .boot .bar { width: min(60vw, 560px); height: 10px; border: 2px solid #000; margin-top: 12px; background: #fff; }
-    .boot .bar > i { display: block; height: 100%; width: 0%; background: #000; }
+    .boot .bar { width: min(60vw, 560px); height: 10px; border: 2px solid var(--ink); margin-top: 12px; background: #fff; }
+    .boot .bar > i { display: block; height: 100%; width: 0%; background: var(--ink); }
 
     .hidden { display: none !important; }
     .noselect { user-select: none; }
@@ -552,36 +568,36 @@ He's probably right.)`
     DesktopCore.register({ id: 'expenses', title: 'Expenses.xlsx', iconClass: '', iconUrl: 'assets/icons/price.png',
     onOpen() {
         const content = `<div style="font-family: var(--ui-font); font-size: 14px;">
-          <table border="1" cellspacing="0" cellpadding="8" style="width: 100%; border-collapse: separate; border-spacing: 0; background: #fff;">
+          <table border="1" cellspacing="0" cellpadding="8" style="width: 100%; border-collapse: separate; border-spacing: 0; background: var(--bg-paper);">
             <tr style="background: #e0e0e0; font-weight: 700;">
-              <th style="text-align: left; border: 1px solid #000;">Item</th>
-              <th style="text-align: left; border: 1px solid #000;">Cost</th>
-              <th style="text-align: left; border: 1px solid #000;">Notes</th>
+              <th style="text-align: left; border: 1px solid var(--ink);">Item</th>
+              <th style="text-align: left; border: 1px solid var(--ink);">Cost</th>
+              <th style="text-align: left; border: 1px solid var(--ink);">Notes</th>
             </tr>
             <tr>
-              <td style="border: 1px solid #000;">Printing (test run)</td>
-              <td style="border: 1px solid #000;">$420</td>
-              <td style="border: 1px solid #000;">cheaper paper</td>
+              <td style="border: 1px solid var(--ink);">Printing (test run)</td>
+              <td style="border: 1px solid var(--ink);">$420</td>
+              <td style="border: 1px solid var(--ink);">cheaper paper</td>
             </tr>
             <tr>
-              <td style="border: 1px solid #000;">Hosting</td>
-              <td style="border: 1px solid #000;">$12/month</td>
-              <td style="border: 1px solid #000;">temporary</td>
+              <td style="border: 1px solid var(--ink);">Hosting</td>
+              <td style="border: 1px solid var(--ink);">$12/month</td>
+              <td style="border: 1px solid var(--ink);">temporary</td>
             </tr>
             <tr>
-              <td style="border: 1px solid #000;">Illustrator advance</td>
-              <td style="border: 1px solid #000;">$150</td>
-              <td style="border: 1px solid #000;">owes us favours</td>
+              <td style="border: 1px solid var(--ink);">Illustrator advance</td>
+              <td style="border: 1px solid var(--ink);">$150</td>
+              <td style="border: 1px solid var(--ink);">owes us favours</td>
             </tr>
             <tr>
-              <td style="border: 1px solid #000;">Coffee</td>
-              <td style="border: 1px solid #000;">$67</td>
-              <td style="border: 1px solid #000;">non-negotiable</td>
+              <td style="border: 1px solid var(--ink);">Coffee</td>
+              <td style="border: 1px solid var(--ink);">$67</td>
+              <td style="border: 1px solid var(--ink);">non-negotiable</td>
             </tr>
             <tr>
-              <td style="border: 1px solid #000;">Emergency fund</td>
-              <td style="border: 1px solid #000;">$0</td>
-              <td style="border: 1px solid #000;"></td>
+              <td style="border: 1px solid var(--ink);">Emergency fund</td>
+              <td style="border: 1px solid var(--ink);">$0</td>
+              <td style="border: 1px solid var(--ink);"></td>
             </tr>
           </table>
           <p style="margin-top: 16px; font-style: italic;">We are absolutely not ready.<br>Proceeding anyway.</p>
@@ -653,9 +669,9 @@ Or it didn't, and I'm overthinking again.`
           const emailDiv = document.createElement('div');
           emailDiv.style.marginBottom = '20px';
           emailDiv.style.padding = '12px';
-          emailDiv.style.border = '1px solid #000';
+          emailDiv.style.border = '1px solid var(--ink)';
           emailDiv.style.cursor = 'pointer';
-          emailDiv.style.backgroundColor = '#fff';
+          emailDiv.style.backgroundColor = 'var(--bg-paper)';
 
           emailDiv.innerHTML = `
             <div style="font-weight: 700; margin-bottom: 4px;">✉ Email ${idx + 1}</div>
@@ -671,7 +687,7 @@ Or it didn't, and I'm overthinking again.`
               content: `<div style="font-family: var(--ui-font); font-size: 14px; line-height: 1.6;">
                 <p><b>From:</b> ${email.from}</p>
                 <p><b>Subject:</b> ${email.subject || '(no subject)'}</p>
-                <hr style="border: 1px solid #000; margin: 12px 0;">
+                <hr style="border: 1px solid var(--ink); margin: 12px 0;">
                 <pre style="white-space: pre-wrap; font-family: var(--ui-font);">${email.content}</pre>
               </div>`
             });
@@ -711,7 +727,7 @@ Or it didn't, and I'm overthinking again.`
           ico.style.height = '120px';
           ico.style.margin = '0 auto';
           ico.style.backgroundColor = '#ccc';
-          ico.style.border = '2px solid #000';
+          ico.style.border = '2px solid var(--ink)';
           ico.style.display = 'grid';
           ico.style.placeItems = 'center';
           ico.style.fontSize = '32px';
@@ -770,10 +786,10 @@ Or it didn't, and I'm overthinking again.`
 
           const linesDiv = document.createElement('div');
           linesDiv.id = 'traceLines';
-          linesDiv.style.border = '1px solid #000';
+          linesDiv.style.border = '1px solid var(--ink)';
           linesDiv.style.padding = '12px';
           linesDiv.style.minHeight = '200px';
-          linesDiv.style.background = '#fff';
+          linesDiv.style.background = 'var(--bg-paper)';
           linesDiv.style.marginBottom = '16px';
           linesDiv.style.fontFamily = 'monospace';
           linesDiv.style.fontSize = '12px';
@@ -788,9 +804,9 @@ Or it didn't, and I'm overthinking again.`
           wrap.appendChild(linesDiv);
           wrap.innerHTML += `
             <div style="margin-bottom: 8px;">
-              <input type="text" id="traceInput" placeholder="Type your line here..." style="width: 100%; padding: 6px; border: 2px solid #000; font-family: var(--ui-font); font-size: 14px;">
+              <input type="text" id="traceInput" placeholder="Type your line here..." style="width: 100%; padding: 6px; border: 2px solid var(--ink); font-family: var(--ui-font); font-size: 14px;">
   </div>
-            <button id="traceSave" style="border: 2px solid #000; background: #fff; padding: 8px 16px; cursor: pointer; font-family: var(--ui-font); font-size: 14px; font-weight: 700;">Save</button>
+            <button id="traceSave" style="border: 2px solid var(--ink); background: #fff; padding: 8px 16px; cursor: pointer; font-family: var(--ui-font); font-size: 14px; font-weight: 700;">Save</button>
             <div id="traceStatus" style="margin-top: 12px; font-size: 12px;"></div>
           `;
 
@@ -813,7 +829,7 @@ Or it didn't, and I'm overthinking again.`
               updateLinesDisplay();
               saveTraceLines(traceLines);
               status.innerHTML = 'Line added.<br>It will be read by someone else.<br>Eventually.';
-              status.style.color = '#000';
+              status.style.color = 'var(--ink)';
             }
           });
 
@@ -922,7 +938,7 @@ const layout = [
         passwordError.textContent = 'Incorrect password. Please try again.';
         passwordInputs.forEach(inp => { inp.value = ''; inp.style.borderColor = '#9b0000'; });
         setTimeout(() => {
-          passwordInputs.forEach(inp => { inp.style.borderColor = '#000'; });
+          passwordInputs.forEach(inp => { inp.style.borderColor = 'var(--ink)'; });
           passwordError.textContent = '';
         }, 2000);
         passwordInputs[0].focus();
