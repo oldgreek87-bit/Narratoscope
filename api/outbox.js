@@ -1,11 +1,17 @@
-import { createClient } from "redis";
+const { createClient } = require("redis");
 
 let redis;
 
 async function getRedis() {
   if (!redis) {
-    redis = createClient({ url: process.env.REDIS_URL || process.env.STORAGE_REDIS_URL });
-    redis.on("error", () => {});
+    const redisUrl = process.env.REDIS_URL;
+    if (!redisUrl) {
+      throw new Error("REDIS_URL environment variable is not set");
+    }
+    redis = createClient({ url: redisUrl });
+    redis.on("error", (err) => {
+      console.error("Redis error:", err);
+    });
     await redis.connect();
   }
   return redis;
@@ -13,7 +19,7 @@ async function getRedis() {
 
 const KEY = "narratoscope:outbox";
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   try {
     const r = await getRedis();
 
@@ -27,7 +33,9 @@ export default async function handler(req, res) {
       const body = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
 
       // body.message expected
-      if (!body || !body.message) return res.status(400).json({ ok: false, error: "No message" });
+      if (!body || !body.message) {
+        return res.status(400).json({ ok: false, error: "No message" });
+      }
 
       const raw = await r.get(KEY);
       const list = raw ? JSON.parse(raw) : [];
@@ -42,6 +50,7 @@ export default async function handler(req, res) {
 
     return res.status(405).json({ ok: false, error: "Method not allowed" });
   } catch (e) {
+    console.error("Handler error:", e);
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
-}
+};
