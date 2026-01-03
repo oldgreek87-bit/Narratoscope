@@ -623,11 +623,18 @@ He's probably right.)`
             const seedMessage = {
               id: 'seed_' + Date.now(),
               from: 'Lida (Narratoscope)',
-              to: 'Rodion',
-              subject: 'Re: Quick question about the issue',
-              body: `Rodion, I'm abusing Lida's mailbox for its intended purpose.
-The issue is ridiculously good.
-If this is a trap — it's working.`,
+              to: 'hello@bookflix.ru',
+              subject: 'I shouldn\'t be here, but…',
+              body: `Hi Bookflix,
+
+I used Lida's mailbox to write this,
+which feels slightly illegal and completely appropriate.
+
+The issue is stunning.
+
+Please keep doing whatever this is.
+
+— a reader`,
               date: new Date().toISOString()
             };
             localStorage.setItem(OUTBOX_STORAGE_KEY, JSON.stringify([seedMessage]));
@@ -667,72 +674,124 @@ If this is a trap — it's working.`,
           } catch(e) {}
         }
 
-        // Inbox messages (local seed)
+        // Inbox messages (local seed) - ordered as specified in TODO.md
         const inboxMessages = [
           {
             id: 'rodion_new',
             from: 'Rodion',
             to: 'Lida',
-            subject: 'Quick question about the issue',
-            body: `Hey.
-I think this issue turned out suspiciously good.
-Like, we accidentally made something real.
+            subject: 'So what do you think?',
+            body: `Lida,
 
-Tell me what you think?
+I've been re-reading the issue tonight and I can't decide
+whether we actually pulled it off or just convinced ourselves we did.
+
+It feels right.
+
+I'd really like to know what you think.
+
+Write back when you have a moment.
 
 — R.`,
             date: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
             unread: true
           },
           {
-            id: 'rodion_old',
-            from: 'Rodion',
+            id: 'print_quote',
+            from: 'print@offset-press.local',
             to: 'Lida',
-            subject: 'This might be stupid (or perfect)',
-            body: `Lida,
+            subject: 'Quote request: 76 pages, full color',
+            body: `Hello,
 
-I keep thinking about what you said — about readers being lenses.
+Following up on your request.
 
-What if we actually lean into it?
-Not explain it.
-Not defend it.
+• 76 pages
+• Full color
+• Matte lamination cover
+• Paper with "book-like feel" (please clarify)
 
-Let people feel it.
+We can offer several paper options depending on budget.
 
-If you're still interested in collaborating — I'm in.
-
-R.`,
-            date: new Date(Date.now() - 86400000 * 3).toISOString(), // 3 days ago
+Please confirm quantity and deadline.`,
+            date: new Date(Date.now() - 86400000 * 2).toISOString(), // 2 days ago
             unread: false
           },
           {
-            id: 'printing',
-            from: 'printing@localpress',
+            id: 'print_clarify',
+            from: 'print@offset-press.local',
             to: 'Lida',
-            subject: 'About payment',
+            subject: 'Re: paper clarification',
+            body: `By "book-like" do you mean:
+
+— uncoated offset
+— slightly yellowed
+— visible fiber
+
+Please note: this will increase cost slightly
+but improve tactile perception.`,
+            date: new Date(Date.now() - 86400000 * 1.5).toISOString(), // 1.5 days ago
+            unread: false
+          },
+          {
+            id: 'auctions',
+            from: 'auctions@rare-objects.net',
+            to: 'Lida',
+            subject: 'About lot #311 — fountain pen',
             body: `Hello,
 
-Just checking if the invoice has been approved.
+You asked about the provenance of the item listed as
+"Virginia Woolf's fountain pen".
 
-Please confirm.
+We can confirm the pen belonged to the Woolf household.
+Direct authorship cannot be guaranteed.
 
-(No reply.)`,
+Let us know if you'd like to proceed.`,
+            date: new Date(Date.now() - 86400000 * 4).toISOString(), // 4 days ago
+            unread: false
+          },
+          {
+            id: 'rodion_old',
+            from: 'Rodion Emelyanov',
+            to: 'Lida',
+            subject: 'Checking in (and maybe interfering)',
+            body: `Lida,
+
+How is it going on your side?
+You mentioned the working title was Narratoscope —
+are you still calling it that, or did it mutate into something else?
+
+We're sketching ideas for our next Bookflix issue,
+and I keep running into the same wall you described:
+about readers being lenses.
+
+If you're open to it, I'd love to try working on something together.
+No pitch, no plan yet — just curiosity.
+
+Let me know how the launch is going.
+Or how it feels, which might be more important.
+
+— R.`,
             date: new Date(Date.now() - 86400000 * 5).toISOString(), // 5 days ago
             unread: false
           },
           {
-            id: 'unknown',
-            from: 'unknown',
+            id: 'contributors',
+            from: 'contributors@freelance.pool',
             to: 'Lida',
-            subject: 'I think something is happening',
-            body: `I don't know who else to write to.
+            subject: 'About deadlines',
+            body: `Hi Lida,
 
-After reading the issue, I noticed I started remembering things
-that weren't mine.
+Just wanted to double-check the timeline.
 
-This is probably nothing.
-Sorry.`,
-            date: new Date(Date.now() - 86400000 * 7).toISOString(), // 7 days ago
+Are we still aiming for "soon", or has "soon"
+quietly turned into "whenever this makes sense"?
+
+No pressure — just trying to plan my life
+around a magazine that may or may not exist yet.
+
+Best,
+A.`,
+            date: new Date(Date.now() - 86400000 * 6).toISOString(), // 6 days ago
             unread: false
           }
         ];
@@ -765,11 +824,11 @@ Sorry.`,
 
         const inboxBtn = document.createElement('button');
         inboxBtn.textContent = 'Inbox';
-        inboxBtn.style.cssText = 'border: 1px solid var(--ink); background: #fff; padding: 8px; cursor: pointer; font-family: var(--ui-font); font-size: 14px; text-align: left; font-weight: 700;';
+        inboxBtn.style.cssText = 'border: 1px solid var(--ink); background: var(--bg-paper); padding: 8px; cursor: pointer; font-family: var(--ui-font); font-size: 14px; text-align: left; font-weight: 700;';
         
         const outboxBtn = document.createElement('button');
         outboxBtn.textContent = 'Outbox';
-        outboxBtn.style.cssText = 'border: 1px solid var(--ink); background: #fff; padding: 8px; cursor: pointer; font-family: var(--ui-font); font-size: 14px; text-align: left;';
+        outboxBtn.style.cssText = 'border: 1px solid var(--ink); background: var(--bg-paper); padding: 8px; cursor: pointer; font-family: var(--ui-font); font-size: 14px; text-align: left;';
 
         sidebar.appendChild(inboxBtn);
         sidebar.appendChild(outboxBtn);
@@ -783,20 +842,29 @@ Sorry.`,
 
         // Message list
         const messageList = document.createElement('div');
-        messageList.style.flex = '1';
+        messageList.style.flex = '0 0 30%';
+        messageList.style.minHeight = '0';
         messageList.style.overflowY = 'auto';
-        messageList.style.borderBottom = '1px solid var(--ink)';
-        messageList.style.background = '#fff';
+        messageList.style.background = 'var(--bg-paper)';
+
+        // Divider bar
+        const divider = document.createElement('div');
+        divider.style.height = '16px';
+        divider.style.flexShrink = '0';
+        divider.style.background = '#E8E5E0';
+        divider.style.borderTop = '1px solid var(--ink)';
+        divider.style.borderBottom = '1px solid var(--ink)';
 
         // Reading pane
         const readingPane = document.createElement('div');
-        readingPane.style.height = '200px';
-        readingPane.style.overflowY = 'auto';
-        readingPane.style.padding = '12px';
+        readingPane.style.flex = '1';
+        readingPane.style.minHeight = '0';
+        readingPane.style.display = 'flex';
+        readingPane.style.flexDirection = 'column';
         readingPane.style.background = 'var(--bg-paper)';
-        readingPane.style.borderTop = '1px solid var(--ink)';
 
         rightPanel.appendChild(messageList);
+        rightPanel.appendChild(divider);
         rightPanel.appendChild(readingPane);
 
         wrap.appendChild(sidebar);
@@ -826,7 +894,7 @@ Sorry.`,
 
           messages.forEach((msg) => {
             const item = document.createElement('div');
-            item.style.cssText = 'padding: 10px; border-bottom: 1px solid var(--ink); cursor: pointer; background: ' + (selectedMessage?.id === msg.id ? '#e0e0e0' : '#fff') + ';';
+            item.style.cssText = 'padding: 10px; border-bottom: 1px solid var(--ink); cursor: pointer; background: ' + (selectedMessage?.id === msg.id ? '#E8E5E0' : 'var(--bg-paper)') + ';';
             
             const from = document.createElement('div');
             from.style.fontWeight = folder === 'inbox' && msg.unread ? '700' : '400';
@@ -863,9 +931,20 @@ Sorry.`,
           readingPane.innerHTML = '';
           
           if (!msg) {
-            readingPane.innerHTML = '<div style="color: var(--ink);">Select a message to read.</div>';
+            const emptyMsg = document.createElement('div');
+            emptyMsg.style.padding = '12px';
+            emptyMsg.style.color = 'var(--ink)';
+            emptyMsg.textContent = 'Select a message to read.';
+            readingPane.appendChild(emptyMsg);
             return;
           }
+
+          // Scrollable content area
+          const scrollableContent = document.createElement('div');
+          scrollableContent.style.flex = '1';
+          scrollableContent.style.minHeight = '0';
+          scrollableContent.style.overflowY = 'auto';
+          scrollableContent.style.padding = '12px';
 
           const header = document.createElement('div');
           header.style.marginBottom = '12px';
@@ -885,20 +964,35 @@ Sorry.`,
           body.style.lineHeight = '1.5';
           body.textContent = msg.body;
 
-          readingPane.appendChild(header);
-          readingPane.appendChild(body);
+          scrollableContent.appendChild(header);
+          scrollableContent.appendChild(body);
+          readingPane.appendChild(scrollableContent);
 
-          // Reply button (only for Inbox messages)
+          // Reply button area (fixed at bottom)
           if (folder === 'inbox' && msg.id === 'rodion_new') {
+            const buttonArea = document.createElement('div');
+            buttonArea.style.padding = '12px';
+            buttonArea.style.borderTop = '1px solid var(--ink)';
+            buttonArea.style.background = 'var(--bg-paper)';
+            buttonArea.style.flexShrink = '0';
+
             const replyBtn = document.createElement('button');
             replyBtn.textContent = 'Reply ↩';
-            replyBtn.style.cssText = 'margin-top: 16px; border: 1px solid var(--ink); background: #fff; padding: 8px 16px; cursor: pointer; font-family: var(--ui-font); font-size: 14px; font-weight: 700;';
+            replyBtn.style.cssText = 'border: 2px solid var(--ink); background: var(--bg-paper); padding: 10px 20px; cursor: pointer; font-family: var(--ui-font); font-size: 15px; font-weight: 700;';
+            
+            replyBtn.addEventListener('mouseenter', () => {
+              replyBtn.style.background = '#E8E5E0';
+            });
+            replyBtn.addEventListener('mouseleave', () => {
+              replyBtn.style.background = 'var(--bg-paper)';
+            });
             
             replyBtn.addEventListener('click', () => {
               showReplyComposer(msg);
             });
 
-            readingPane.appendChild(replyBtn);
+            buttonArea.appendChild(replyBtn);
+            readingPane.appendChild(buttonArea);
           }
 
           // Mark as read if inbox message
@@ -917,19 +1011,19 @@ Sorry.`,
             <div style="margin-bottom: 12px;"><b>Reply to:</b> ${originalMsg.from}</div>
             <div style="margin-bottom: 8px;">
               <label style="display: block; margin-bottom: 4px;"><b>To:</b></label>
-              <input type="text" id="replyTo" value="${originalMsg.from}" readonly style="width: 100%; padding: 6px; border: 1px solid var(--ink); font-family: var(--ui-font); font-size: 13px; background: #f0f0f0;">
+              <input type="text" id="replyTo" value="${originalMsg.from}" readonly style="width: 100%; padding: 6px; border: 1px solid var(--ink); font-family: var(--ui-font); font-size: 13px; background: #E8E5E0;">
             </div>
             <div style="margin-bottom: 8px;">
               <label style="display: block; margin-bottom: 4px;"><b>Subject:</b></label>
-              <input type="text" id="replySubject" value="Re: ${originalMsg.subject}" style="width: 100%; padding: 6px; border: 1px solid var(--ink); font-family: var(--ui-font); font-size: 13px;">
+              <input type="text" id="replySubject" value="Re: ${originalMsg.subject}" style="width: 100%; padding: 6px; border: 1px solid var(--ink); font-family: var(--ui-font); font-size: 13px; background: var(--bg-paper);">
             </div>
             <div style="margin-bottom: 12px;">
               <label style="display: block; margin-bottom: 4px;"><b>Body:</b></label>
-              <textarea id="replyBody" rows="8" style="width: 100%; padding: 6px; border: 1px solid var(--ink); font-family: var(--ui-font); font-size: 13px; resize: vertical;"></textarea>
+              <textarea id="replyBody" rows="8" style="width: 100%; padding: 6px; border: 1px solid var(--ink); font-family: var(--ui-font); font-size: 13px; resize: vertical; background: var(--bg-paper);"></textarea>
             </div>
             <div style="display: flex; gap: 8px;">
-              <button id="sendReply" style="border: 1px solid var(--ink); background: #fff; padding: 8px 16px; cursor: pointer; font-family: var(--ui-font); font-size: 14px; font-weight: 700;">Send</button>
-              <button id="cancelReply" style="border: 1px solid var(--ink); background: #fff; padding: 8px 16px; cursor: pointer; font-family: var(--ui-font); font-size: 14px;">Cancel</button>
+              <button id="sendReply" style="border: 1px solid var(--ink); background: var(--bg-paper); padding: 8px 16px; cursor: pointer; font-family: var(--ui-font); font-size: 14px; font-weight: 700;">Send</button>
+              <button id="cancelReply" style="border: 1px solid var(--ink); background: var(--bg-paper); padding: 8px 16px; cursor: pointer; font-family: var(--ui-font); font-size: 14px;">Cancel</button>
             </div>
             <div id="replyStatus" style="margin-top: 12px; font-size: 12px;"></div>
           `;
