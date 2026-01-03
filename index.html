@@ -609,23 +609,13 @@ He's probably right.)`
     /* МОДУЛЬ: Mailbox */
     DesktopCore.register({ id: 'inbox', title: 'Mailbox', iconClass: '', iconUrl: 'assets/icons/contacts.png',
       onOpen() {
-        // Storage layer (can be replaced with real API later)
-        const OUTBOX_STORAGE_KEY = 'narratoscope_outbox_shared';
-        const INBOX_READ_STATE_KEY = 'narratoscope_inbox_read';
-
-        function getOutboxMessages() {
-          try {
-            const stored = localStorage.getItem(OUTBOX_STORAGE_KEY);
-            if (stored) {
-              return JSON.parse(stored);
-            }
-            // Seed initial Outbox message
-            const seedMessage = {
-              id: 'seed_' + Date.now(),
-              from: 'Lida (Narratoscope)',
-              to: 'hello@bookflix.ru',
-              subject: 'I shouldn\'t be here, but…',
-              body: `Hi Bookflix,
+        // Pinned demo message (always shown first in Outbox, client-side only)
+        const PINNED_OUTBOX_MESSAGE = {
+          id: 'pinned_demo',
+          from: 'Lida (Narratoscope)',
+          to: 'hello@bookflix.ru',
+          subject: 'I shouldn\'t be here, but…',
+          body: `Hi Bookflix,
 
 I used Lida's mailbox to write this,
 which feels slightly illegal and completely appropriate.
@@ -635,26 +625,44 @@ The issue is stunning.
 Please keep doing whatever this is.
 
 — a reader`,
-              date: new Date().toISOString()
-            };
-            localStorage.setItem(OUTBOX_STORAGE_KEY, JSON.stringify([seedMessage]));
-            return [seedMessage];
+          date: new Date().toISOString()
+        };
+
+        const INBOX_READ_STATE_KEY = 'narratoscope_inbox_read';
+
+        async function getOutboxMessages() {
+          try {
+            const response = await fetch('/api/outbox');
+            if (!response.ok) {
+              throw new Error(`Server returned ${response.status}`);
+            }
+            const data = await response.json();
+            if (data.ok && Array.isArray(data.messages)) {
+              return data.messages;
+            }
+            return [];
           } catch(e) {
+            console.error('Failed to fetch Outbox:', e);
             return [];
           }
         }
 
-        function saveOutboxMessage(message) {
-          const messages = getOutboxMessages();
-          messages.unshift({
-            ...message,
-            id: 'msg_' + Date.now(),
-            date: new Date().toISOString()
-          });
+        async function saveOutboxMessage(message) {
           try {
-            localStorage.setItem(OUTBOX_STORAGE_KEY, JSON.stringify(messages));
-          } catch(e) {}
-          return messages;
+            const response = await fetch('/api/outbox', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ message: message })
+            });
+            if (!response.ok) {
+              throw new Error(`Server returned ${response.status}`);
+            }
+            const data = await response.json();
+            return data.ok;
+          } catch(e) {
+            console.error('Failed to save Outbox message:', e);
+            throw e;
+          }
         }
 
         function getReadState() {
@@ -878,9 +886,17 @@ A.`,
           inboxBtn.textContent = unreadCount > 0 ? `Inbox (${unreadCount})` : 'Inbox';
         }
 
-        function renderMessageList(folder) {
+        async function renderMessageList(folder) {
           messageList.innerHTML = '';
-          const messages = folder === 'inbox' ? inboxMessages : getOutboxMessages();
+          
+          let messages;
+          if (folder === 'inbox') {
+            messages = inboxMessages;
+          } else {
+            // Outbox: combine pinned message + server messages
+            const serverMessages = await getOutboxMessages();
+            messages = [PINNED_OUTBOX_MESSAGE, ...serverMessages];
+          }
 
           if (messages.length === 0) {
             const empty = document.createElement('div');
@@ -917,9 +933,9 @@ A.`,
             item.appendChild(subject);
             item.appendChild(date);
 
-            item.addEventListener('click', () => {
+            item.addEventListener('click', async () => {
               selectedMessage = msg;
-              renderMessageList(currentFolder);
+              await renderMessageList(currentFolder);
               renderReadingPane(msg, folder);
             });
 
@@ -1034,7 +1050,7 @@ A.`,
           const cancelBtn = composer.querySelector('#cancelReply');
           const status = composer.querySelector('#replyStatus');
 
-          sendBtn.addEventListener('click', () => {
+          sendBtn.addEventListener('click', async () => {
             const to = composer.querySelector('#replyTo').value;
             const subject = composer.querySelector('#replySubject').value;
             const body = composer.querySelector('#replyBody').value.trim();
@@ -1052,25 +1068,41 @@ A.`,
               body: body
             };
 
-            saveOutboxMessage(newMessage);
-            
-            // Mark original as read
-            markAsRead(originalMsg.id);
-            originalMsg.unread = false;
-            updateUnreadBadge();
-
-            status.textContent = 'Sent.';
+            // Disable button and show "Sending..."
+            sendBtn.disabled = true;
+            sendBtn.textContent = 'Sending...';
+            status.textContent = '';
             status.style.color = 'var(--ink)';
 
-            // Clear composer after a moment
-            setTimeout(() => {
-              if (currentFolder === 'outbox') {
-                renderMessageList('outbox');
-                renderReadingPane(getOutboxMessages()[0], 'outbox');
-              } else {
-                renderReadingPane(originalMsg, 'inbox');
-              }
-            }, 1000);
+            try {
+              await saveOutboxMessage(newMessage);
+              
+              // Mark original as read
+              markAsRead(originalMsg.id);
+              originalMsg.unread = false;
+              updateUnreadBadge();
+
+              status.textContent = 'Sent.';
+              status.style.color = 'var(--ink)';
+
+              // Refresh Outbox and clear composer after a moment
+              setTimeout(async () => {
+                if (currentFolder === 'outbox') {
+                  await renderMessageList('outbox');
+                  const serverMessages = await getOutboxMessages();
+                  if (serverMessages.length > 0) {
+                    renderReadingPane(serverMessages[0], 'outbox');
+                  }
+                } else {
+                  renderReadingPane(originalMsg, 'inbox');
+                }
+              }, 1000);
+            } catch (e) {
+              status.textContent = 'Send failed.';
+              status.style.color = 'var(--ink)';
+              sendBtn.disabled = false;
+              sendBtn.textContent = 'Send';
+            }
           });
 
           cancelBtn.addEventListener('click', () => {
@@ -1088,12 +1120,12 @@ A.`,
           renderReadingPane(null, 'inbox');
         });
 
-        outboxBtn.addEventListener('click', () => {
+        outboxBtn.addEventListener('click', async () => {
           currentFolder = 'outbox';
           selectedMessage = null;
           inboxBtn.style.fontWeight = '400';
           outboxBtn.style.fontWeight = '700';
-          renderMessageList('outbox');
+          await renderMessageList('outbox');
           renderReadingPane(null, 'outbox');
         });
 
