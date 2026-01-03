@@ -1297,6 +1297,276 @@ A.`,
       });
     })();
 
+    /* МОДУЛЬ: Trash */
+    (() => {
+      let trashFileRestored = false; // Track if file has been restored
+
+      // Document file in Trash (defined in closure scope for restored icon access)
+      const trashFile = {
+        name: 'draft_editorial_v3_FINAL.docx',
+        content: `# What Deserves to Be Printed?
+## (or: why the hell am I starting a magazine in 2026?)
+
+**[Note to self: too defensive? start with the question directly?]**
+
+Everything is online. Everything is instant. Everything is... everywhere, all at once, forever. So why print?
+
+**[margin note: "this sounds pretentious - be funnier here"]**
+
+Here's what I know: I've read 47 articles this week. I remember exactly one sentence from one of them. Maybe two if I'm being generous. The rest? Gone. Dissolved into the infinite scroll, the algorithmic void, the digital whatever-we're-calling-it-now.
+
+But last month I found a magazine from 1987 in my grandmother's attic. Cover curled, pages yellowed, smelling like time itself. And I read every single word. ~~Why? Because it was there? Because~~
+
+**[margin note: "get to the point faster"]**
+
+Print demands something. It demands: *is this worth the paper it's printed on?* And that's not poetic bullshit—that's literal. Paper costs money. Ink costs money. ~~Distribution costs money. Someone has to physically carry this thing from~~ 
+
+The internet lets us publish anything. (And god knows we do.) But print? Print makes you choose. 
+
+So what deserves it?
+
+~~Not everything that goes viral. Not everything that gets engagement. Not~~
+
+**[margin note: "what DOES deserve it then???? answer this or delete everything"]**
+
+Maybe it's this: the stuff you'd want to find in *your* grandmother's attic in 40 years. The stuff that doesn't just capture *this exact moment* but... 
+
+**[margin note: "finish this thought or I swear to god"]**
+
+Look, I don't have all the answers. I'm literally sitting here in my apartment trying to justify why I'm about to spend [redacted amount] ~~of money I definitely don't have~~ on printing something that anyone could just... post. For free. Right now.
+
+But here's the thing—
+
+**[margin note: "here's WHAT thing???"]**
+
+~~I think we've confused~~ When everything lives forever online, nothing really lives at all. It's all just... *there*. Floating. Waiting to be dug up in some future context collapse where your 2015 tweet about sandwich preferences somehow ruins your career.
+
+Print is different. Print is a commitment. Print says: **this mattered enough.**
+
+And maybe that's all a magazine needs to be now. Not a format. Not a business model. Just a filter. A curatorial middle finger to the idea that everything deserves equal attention just because it can technically reach everyone.
+
+~~So if you're reading this~~
+
+**[final margin note: "DO I CUT THE ENDING OR DOES IT NEED ONE? also - is this whole thing stupid? also also - call Marcus about printing costs. also also also - WHY AM I DOING THIS"]`
+      };
+
+      // Convert markdown-like content to HTML (process line by line)
+      function formatLine(line) {
+        let html = line;
+          // Convert headers first
+          if (html.match(/^### (.+)$/)) {
+            html = '<h3>' + html.replace(/^### (.+)$/, '$1') + '</h3>';
+          } else if (html.match(/^## (.+)$/)) {
+            html = '<h2>' + html.replace(/^## (.+)$/, '$1') + '</h2>';
+          } else if (html.match(/^# (.+)$/)) {
+            html = '<h1>' + html.replace(/^# (.+)$/, '$1') + '</h1>';
+          } else {
+            // Convert strikethrough ~~text~~ to <s>text</s>
+            html = html.replace(/~~([^~]+)~~/g, '<s>$1</s>');
+            // Convert margin notes **[margin note: "..."]** to styled notes
+            html = html.replace(/\*\*\[margin note: "([^"]+)"\]\*\*/g, '<span style="font-style: italic; color: #666;">[margin note: "$1"]</span>');
+            // Convert **[Note to self: ...]** to styled notes
+            html = html.replace(/\*\*\[Note to self: ([^\]]+)\]\*\*/g, '<span style="font-style: italic; color: #666;">[Note to self: $1]</span>');
+            // Convert **[final margin note: ...]** to styled notes
+            html = html.replace(/\*\*\[final margin note: "([^"]+)"\]\*\*/g, '<span style="font-style: italic; color: #666;">[final margin note: "$1"]</span>');
+            // Convert **bold** to <strong>
+            html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+            // Convert *italic* to <em> (single asterisk, not double)
+            html = html.replace(/(^|[^*])\*([^*]+)\*([^*]|$)/g, '$1<em>$2</em>$3');
+        }
+        return html;
+      }
+
+      function createDocumentWindow() {
+        const docWrap = document.createElement('div');
+        docWrap.style.fontFamily = 'var(--ui-font)';
+        docWrap.style.fontSize = '14px';
+        docWrap.style.height = '100%';
+        docWrap.style.display = 'flex';
+        docWrap.style.flexDirection = 'column';
+        docWrap.style.padding = '16px';
+        docWrap.style.boxSizing = 'border-box';
+
+        // Two-column container
+        const columnsContainer = document.createElement('div');
+        columnsContainer.style.display = 'flex';
+        columnsContainer.style.flex = '1';
+        columnsContainer.style.gap = '20px';
+        columnsContainer.style.minHeight = '0';
+        columnsContainer.style.overflowY = 'auto';
+
+        // Process content line by line
+        const lines = trashFile.content.split('\n');
+        const formattedLines = lines.map(line => formatLine(line));
+        
+        // Split roughly in half (find a good breaking point near the middle)
+        const midPoint = Math.ceil(formattedLines.length / 2);
+        // Try to break at an empty line if possible
+        let breakPoint = midPoint;
+        for (let i = midPoint - 5; i < midPoint + 5 && i < formattedLines.length; i++) {
+          if (formattedLines[i].trim() === '' || formattedLines[i].trim() === '<br>') {
+            breakPoint = i + 1;
+            break;
+          }
+        }
+
+        // First column
+        const col1 = document.createElement('div');
+        col1.style.width = '50%';
+        col1.style.display = 'flex';
+        col1.style.flexDirection = 'column';
+        col1.style.paddingRight = '10px';
+
+        // Image at top of first column
+        const img = document.createElement('img');
+        img.src = 'assets/icons/printing.png';
+        img.style.width = '100%';
+        img.style.height = 'auto';
+        img.style.imageRendering = 'pixelated';
+        img.style.marginBottom = '16px';
+        col1.appendChild(img);
+
+        // Content (first half)
+        const contentDiv1 = document.createElement('div');
+        contentDiv1.style.lineHeight = '1.6';
+        contentDiv1.innerHTML = formattedLines.slice(0, breakPoint).join('<br>');
+        col1.appendChild(contentDiv1);
+
+        // Second column
+        const col2 = document.createElement('div');
+        col2.style.width = '50%';
+        col2.style.display = 'flex';
+        col2.style.flexDirection = 'column';
+        col2.style.paddingLeft = '10px';
+
+        // Content (second half)
+        const contentDiv2 = document.createElement('div');
+        contentDiv2.style.lineHeight = '1.6';
+        contentDiv2.innerHTML = formattedLines.slice(breakPoint).join('<br>');
+        col2.appendChild(contentDiv2);
+
+        columnsContainer.appendChild(col1);
+        columnsContainer.appendChild(col2);
+
+        // Footer
+        const footer = document.createElement('div');
+        footer.style.marginTop = '16px';
+        footer.style.paddingTop = '12px';
+        footer.style.borderTop = '1px solid var(--ink)';
+        footer.style.fontSize = '12px';
+        footer.style.color = '#666';
+        footer.textContent = 'draft_editorial_v3_FINAL.docx | Last modified: 2:34 AM | Location: Trash';
+
+        docWrap.appendChild(columnsContainer);
+        docWrap.appendChild(footer);
+
+        return docWrap;
+      }
+
+      DesktopCore.register({ id: 'trash', title: 'Trash', iconClass: '', iconUrl: 'assets/icons/trash.png',
+        onOpen() {
+          // Don't show file if it's already been restored
+          if (trashFileRestored) {
+            const wrap = document.createElement('div');
+            wrap.style.fontFamily = 'var(--ui-font)';
+            wrap.style.fontSize = '14px';
+            wrap.style.padding = '20px';
+            wrap.textContent = 'Trash is empty.';
+            DesktopCore.spawnWindow({ title: 'Trash', width: 520, height: 420, content: wrap });
+            return;
+          }
+
+          const wrap = document.createElement('div');
+          wrap.style.fontFamily = 'var(--ui-font)';
+          wrap.style.fontSize = '14px';
+
+          const grid = document.createElement('div');
+          grid.style.display = 'grid';
+          grid.style.gridTemplateColumns = 'repeat(auto-fill, 120px)';
+          grid.style.gap = '16px';
+
+          const cell = document.createElement('div');
+          cell.style.width = '120px';
+          cell.style.textAlign = 'center';
+          cell.style.userSelect = 'none';
+          cell.style.cursor = 'default'; // No open action
+
+          const ico = document.createElement('div');
+          ico.style.width = '96px';
+          ico.style.height = '96px';
+          ico.style.margin = '0 auto';
+          ico.style.backgroundImage = `url('assets/icons/txt.png')`;
+          ico.style.backgroundRepeat = 'no-repeat';
+          ico.style.backgroundPosition = 'center';
+          ico.style.backgroundSize = 'contain';
+          ico.style.imageRendering = 'pixelated';
+
+          const cap = document.createElement('div');
+          cap.textContent = trashFile.name;
+          cap.style.marginTop = '6px';
+          cap.style.fontSize = '12px';
+          cap.style.overflow = 'hidden';
+          cap.style.textOverflow = 'ellipsis';
+          cap.style.whiteSpace = 'nowrap';
+          cap.style.width = '100%';
+
+          // Right-click context menu for Restore (only action allowed)
+          cell.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            DesktopCore.showContext(e.clientX, e.clientY, [
+              { 
+                label: 'Restore', 
+                action: () => {
+                  // Mark as restored
+                  trashFileRestored = true;
+                  
+                  // Restore: create desktop icon
+                  const pos = DesktopCore.getIconPosition('restored_' + trashFile.name, { x: 100, y: 200 });
+                  const iconEl = DesktopCore.spawnIcon({
+                    id: 'restored_' + trashFile.name,
+                    title: trashFile.name,
+                    className: '',
+                    iconUrl: 'assets/icons/txt.png',
+                    x: pos.x,
+                    y: pos.y,
+                    onOpen() {
+                      const docContent = createDocumentWindow();
+                      DesktopCore.spawnWindow({
+                        title: trashFile.name,
+                        width: 800,
+                        height: 600,
+                        content: docContent
+                      });
+                    }
+                  });
+                  
+                  // Add text truncation to desktop icon label
+                  const labelEl = iconEl.querySelector('.label');
+                  if (labelEl) {
+                    labelEl.style.overflow = 'hidden';
+                    labelEl.style.textOverflow = 'ellipsis';
+                    labelEl.style.whiteSpace = 'nowrap';
+                    labelEl.style.maxWidth = '168px';
+                  }
+                  
+                  // Remove from Trash (remove the cell)
+                  cell.remove();
+                }
+              }
+            ], cell);
+          });
+
+          cell.appendChild(ico);
+          cell.appendChild(cap);
+          grid.appendChild(cell);
+
+          wrap.appendChild(grid);
+          DesktopCore.spawnWindow({ title: 'Trash', width: 520, height: 420, content: wrap });
+        }
+      });
+    })();
+
     // Порядок появления иконок (фиксированный)
 const layout = [
       'my-computer',    // My Computer
@@ -1304,7 +1574,8 @@ const layout = [
       'expenses',       // Expenses.xlsx
       'inbox',          // Inbox
       'photos',         // Photos
-      'leave-a-trace'   // Leave a Trace
+      'leave-a-trace',  // Leave a Trace
+      'trash'           // Trash
 ];
     // Фиксированная раскладка (проценты от рабочей области)
     const USE_FIXED_LAYOUT = true;
@@ -1314,7 +1585,8 @@ const layout = [
       'expenses':       { xPct: 42, yPct: 10 },
       'inbox':          { xPct: 6,  yPct: 35 },
       'photos':         { xPct: 24, yPct: 35 },
-      'leave-a-trace':  { xPct: 42, yPct: 35 }
+      'leave-a-trace':  { xPct: 42, yPct: 35 },
+      'trash':          { xPct: 60, yPct: 10 }
 };
 
     function bootSequence() {
