@@ -638,7 +638,13 @@ Please keep doing whatever this is.
             }
             const data = await response.json();
             if (data.ok && Array.isArray(data.messages)) {
-              return data.messages;
+              // Ensure every message has a valid ISO date string
+              return data.messages.map(msg => {
+                if (!msg.date || isNaN(new Date(msg.date).getTime())) {
+                  msg.date = new Date().toISOString();
+                }
+                return msg;
+              });
             }
             return [];
           } catch(e) {
@@ -649,10 +655,15 @@ Please keep doing whatever this is.
 
         async function saveOutboxMessage(message) {
           try {
+            // Ensure message has a valid ISO date string
+            const messageWithDate = {
+              ...message,
+              date: message.date || new Date().toISOString()
+            };
             const response = await fetch('/api/outbox', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ message: message })
+              body: JSON.stringify({ message: messageWithDate })
             });
             if (!response.ok) {
               throw new Error(`Server returned ${response.status}`);
@@ -926,8 +937,13 @@ A.`,
             date.style.fontSize = '11px';
             date.style.marginTop = '4px';
             date.style.color = 'var(--ink)';
-            const msgDate = new Date(msg.date);
-            date.textContent = msgDate.toLocaleDateString() + ' ' + msgDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const msgDate = new Date(msg.date || new Date().toISOString());
+            if (isNaN(msgDate.getTime())) {
+              const fallbackDate = new Date();
+              date.textContent = fallbackDate.toLocaleDateString() + ' ' + fallbackDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            } else {
+              date.textContent = msgDate.toLocaleDateString() + ' ' + msgDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            }
 
             item.appendChild(from);
             item.appendChild(subject);
