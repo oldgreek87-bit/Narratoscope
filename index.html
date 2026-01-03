@@ -606,14 +606,90 @@ He's probably right.)`
       }
     });
 
-    /* МОДУЛЬ: Inbox */
-    DesktopCore.register({ id: 'inbox', title: 'Inbox', iconClass: '', iconUrl: 'assets/icons/contacts.png',
+    /* МОДУЛЬ: Mailbox */
+    DesktopCore.register({ id: 'inbox', title: 'Mailbox', iconClass: '', iconUrl: 'assets/icons/contacts.png',
       onOpen() {
-        const emails = [
+        // Storage layer (can be replaced with real API later)
+        const OUTBOX_STORAGE_KEY = 'narratoscope_outbox_shared';
+        const INBOX_READ_STATE_KEY = 'narratoscope_inbox_read';
+
+        function getOutboxMessages() {
+          try {
+            const stored = localStorage.getItem(OUTBOX_STORAGE_KEY);
+            if (stored) {
+              return JSON.parse(stored);
+            }
+            // Seed initial Outbox message
+            const seedMessage = {
+              id: 'seed_' + Date.now(),
+              from: 'Lida (Narratoscope)',
+              to: 'Rodion',
+              subject: 'Re: Quick question about the issue',
+              body: `Rodion, I'm abusing Lida's mailbox for its intended purpose.
+The issue is ridiculously good.
+If this is a trap — it's working.`,
+              date: new Date().toISOString()
+            };
+            localStorage.setItem(OUTBOX_STORAGE_KEY, JSON.stringify([seedMessage]));
+            return [seedMessage];
+          } catch(e) {
+            return [];
+          }
+        }
+
+        function saveOutboxMessage(message) {
+          const messages = getOutboxMessages();
+          messages.unshift({
+            ...message,
+            id: 'msg_' + Date.now(),
+            date: new Date().toISOString()
+          });
+          try {
+            localStorage.setItem(OUTBOX_STORAGE_KEY, JSON.stringify(messages));
+          } catch(e) {}
+          return messages;
+        }
+
+        function getReadState() {
+          try {
+            const stored = localStorage.getItem(INBOX_READ_STATE_KEY);
+            return stored ? JSON.parse(stored) : {};
+          } catch(e) {
+            return {};
+          }
+        }
+
+        function markAsRead(messageId) {
+          const readState = getReadState();
+          readState[messageId] = true;
+          try {
+            localStorage.setItem(INBOX_READ_STATE_KEY, JSON.stringify(readState));
+          } catch(e) {}
+        }
+
+        // Inbox messages (local seed)
+        const inboxMessages = [
           {
+            id: 'rodion_new',
             from: 'Rodion',
+            to: 'Lida',
+            subject: 'Quick question about the issue',
+            body: `Hey.
+I think this issue turned out suspiciously good.
+Like, we accidentally made something real.
+
+Tell me what you think?
+
+— R.`,
+            date: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
+            unread: true
+          },
+          {
+            id: 'rodion_old',
+            from: 'Rodion',
+            to: 'Lida',
             subject: 'This might be stupid (or perfect)',
-            content: `Lida,
+            body: `Lida,
 
 I keep thinking about what you said — about readers being lenses.
 
@@ -625,78 +701,315 @@ Let people feel it.
 
 If you're still interested in collaborating — I'm in.
 
-R.`
+R.`,
+            date: new Date(Date.now() - 86400000 * 3).toISOString(), // 3 days ago
+            unread: false
           },
           {
+            id: 'printing',
             from: 'printing@localpress',
+            to: 'Lida',
             subject: 'About payment',
-            content: `Hello,
+            body: `Hello,
 
 Just checking if the invoice has been approved.
 
 Please confirm.
 
-(No reply.)`
+(No reply.)`,
+            date: new Date(Date.now() - 86400000 * 5).toISOString(), // 5 days ago
+            unread: false
           },
           {
+            id: 'unknown',
             from: 'unknown',
+            to: 'Lida',
             subject: 'I think something is happening',
-            content: `I don't know who else to write to.
+            body: `I don't know who else to write to.
 
 After reading the issue, I noticed I started remembering things
 that weren't mine.
 
 This is probably nothing.
-Sorry.`
-          },
-          {
-            from: 'Draft (unsent)',
-            subject: '',
-            content: `Dear —
-
-If you're reading this,
-then it worked.
-
-Or it didn't, and I'm overthinking again.`
+Sorry.`,
+            date: new Date(Date.now() - 86400000 * 7).toISOString(), // 7 days ago
+            unread: false
           }
         ];
 
+        // Apply read state from storage
+        const readState = getReadState();
+        inboxMessages.forEach(msg => {
+          if (readState[msg.id]) {
+            msg.unread = false;
+          }
+        });
+
+        // Create Mailbox UI
         const wrap = document.createElement('div');
         wrap.style.fontFamily = 'var(--ui-font)';
         wrap.style.fontSize = '14px';
+        wrap.style.display = 'flex';
+        wrap.style.height = '100%';
+        wrap.style.overflow = 'hidden';
 
-        emails.forEach((email, idx) => {
-          const emailDiv = document.createElement('div');
-          emailDiv.style.marginBottom = '20px';
-          emailDiv.style.padding = '12px';
-          emailDiv.style.border = '1px solid var(--ink)';
-          emailDiv.style.cursor = 'pointer';
-          emailDiv.style.backgroundColor = 'var(--bg-paper)';
+        // Left sidebar: Folders
+        const sidebar = document.createElement('div');
+        sidebar.style.width = '160px';
+        sidebar.style.borderRight = '1px solid var(--ink)';
+        sidebar.style.padding = '12px';
+        sidebar.style.display = 'flex';
+        sidebar.style.flexDirection = 'column';
+        sidebar.style.gap = '8px';
+        sidebar.style.background = 'var(--bg-paper)';
 
-          emailDiv.innerHTML = `
-            <div style="font-weight: 700; margin-bottom: 4px;">✉ Email ${idx + 1}</div>
-            <div><b>From:</b> ${email.from}</div>
-            <div><b>Subject:</b> ${email.subject}</div>
+        const inboxBtn = document.createElement('button');
+        inboxBtn.textContent = 'Inbox';
+        inboxBtn.style.cssText = 'border: 1px solid var(--ink); background: #fff; padding: 8px; cursor: pointer; font-family: var(--ui-font); font-size: 14px; text-align: left; font-weight: 700;';
+        
+        const outboxBtn = document.createElement('button');
+        outboxBtn.textContent = 'Outbox';
+        outboxBtn.style.cssText = 'border: 1px solid var(--ink); background: #fff; padding: 8px; cursor: pointer; font-family: var(--ui-font); font-size: 14px; text-align: left;';
+
+        sidebar.appendChild(inboxBtn);
+        sidebar.appendChild(outboxBtn);
+
+        // Right side: Message list + Reading pane
+        const rightPanel = document.createElement('div');
+        rightPanel.style.flex = '1';
+        rightPanel.style.display = 'flex';
+        rightPanel.style.flexDirection = 'column';
+        rightPanel.style.overflow = 'hidden';
+
+        // Message list
+        const messageList = document.createElement('div');
+        messageList.style.flex = '1';
+        messageList.style.overflowY = 'auto';
+        messageList.style.borderBottom = '1px solid var(--ink)';
+        messageList.style.background = '#fff';
+
+        // Reading pane
+        const readingPane = document.createElement('div');
+        readingPane.style.height = '200px';
+        readingPane.style.overflowY = 'auto';
+        readingPane.style.padding = '12px';
+        readingPane.style.background = 'var(--bg-paper)';
+        readingPane.style.borderTop = '1px solid var(--ink)';
+
+        rightPanel.appendChild(messageList);
+        rightPanel.appendChild(readingPane);
+
+        wrap.appendChild(sidebar);
+        wrap.appendChild(rightPanel);
+
+        let currentFolder = 'inbox';
+        let selectedMessage = null;
+
+        function updateUnreadBadge() {
+          const unreadCount = inboxMessages.filter(m => m.unread).length;
+          inboxBtn.textContent = unreadCount > 0 ? `Inbox (${unreadCount})` : 'Inbox';
+        }
+
+        function renderMessageList(folder) {
+          messageList.innerHTML = '';
+          const messages = folder === 'inbox' ? inboxMessages : getOutboxMessages();
+
+          if (messages.length === 0) {
+            const empty = document.createElement('div');
+            empty.style.padding = '20px';
+            empty.style.textAlign = 'center';
+            empty.style.color = 'var(--ink)';
+            empty.textContent = 'No messages.';
+            messageList.appendChild(empty);
+            return;
+          }
+
+          messages.forEach((msg) => {
+            const item = document.createElement('div');
+            item.style.cssText = 'padding: 10px; border-bottom: 1px solid var(--ink); cursor: pointer; background: ' + (selectedMessage?.id === msg.id ? '#e0e0e0' : '#fff') + ';';
+            
+            const from = document.createElement('div');
+            from.style.fontWeight = folder === 'inbox' && msg.unread ? '700' : '400';
+            from.textContent = folder === 'inbox' ? msg.from : msg.to;
+            
+            const subject = document.createElement('div');
+            subject.style.fontSize = '12px';
+            subject.style.marginTop = '4px';
+            subject.style.color = 'var(--ink)';
+            subject.textContent = msg.subject || '(no subject)';
+            
+            const date = document.createElement('div');
+            date.style.fontSize = '11px';
+            date.style.marginTop = '4px';
+            date.style.color = 'var(--ink)';
+            const msgDate = new Date(msg.date);
+            date.textContent = msgDate.toLocaleDateString() + ' ' + msgDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            item.appendChild(from);
+            item.appendChild(subject);
+            item.appendChild(date);
+
+            item.addEventListener('click', () => {
+              selectedMessage = msg;
+              renderMessageList(currentFolder);
+              renderReadingPane(msg, folder);
+            });
+
+            messageList.appendChild(item);
+          });
+        }
+
+        function renderReadingPane(msg, folder) {
+          readingPane.innerHTML = '';
+          
+          if (!msg) {
+            readingPane.innerHTML = '<div style="color: var(--ink);">Select a message to read.</div>';
+            return;
+          }
+
+          const header = document.createElement('div');
+          header.style.marginBottom = '12px';
+          header.style.paddingBottom = '8px';
+          header.style.borderBottom = '1px solid var(--ink)';
+          header.innerHTML = `
+            <div><b>From:</b> ${msg.from}</div>
+            <div style="margin-top: 4px;"><b>To:</b> ${msg.to || 'Lida'}</div>
+            <div style="margin-top: 4px;"><b>Subject:</b> ${msg.subject || '(no subject)'}</div>
           `;
 
-          emailDiv.addEventListener('click', () => {
-            DesktopCore.spawnWindow({
-              title: email.subject || 'Untitled',
-              width: 600,
-              height: 480,
-              content: `<div style="font-family: var(--ui-font); font-size: 14px; line-height: 1.6;">
-                <p><b>From:</b> ${email.from}</p>
-                <p><b>Subject:</b> ${email.subject || '(no subject)'}</p>
-                <hr style="border: 1px solid var(--ink); margin: 12px 0;">
-                <pre style="white-space: pre-wrap; font-family: var(--ui-font);">${email.content}</pre>
-              </div>`
+          const body = document.createElement('div');
+          body.style.marginTop = '12px';
+          body.style.whiteSpace = 'pre-wrap';
+          body.style.fontFamily = 'var(--ui-font)';
+          body.style.fontSize = '13px';
+          body.style.lineHeight = '1.5';
+          body.textContent = msg.body;
+
+          readingPane.appendChild(header);
+          readingPane.appendChild(body);
+
+          // Reply button (only for Inbox messages)
+          if (folder === 'inbox' && msg.id === 'rodion_new') {
+            const replyBtn = document.createElement('button');
+            replyBtn.textContent = 'Reply ↩';
+            replyBtn.style.cssText = 'margin-top: 16px; border: 1px solid var(--ink); background: #fff; padding: 8px 16px; cursor: pointer; font-family: var(--ui-font); font-size: 14px; font-weight: 700;';
+            
+            replyBtn.addEventListener('click', () => {
+              showReplyComposer(msg);
             });
+
+            readingPane.appendChild(replyBtn);
+          }
+
+          // Mark as read if inbox message
+          if (folder === 'inbox' && msg.unread) {
+            markAsRead(msg.id);
+            msg.unread = false;
+            updateUnreadBadge();
+          }
+        }
+
+        function showReplyComposer(originalMsg) {
+          readingPane.innerHTML = '';
+          
+          const composer = document.createElement('div');
+          composer.innerHTML = `
+            <div style="margin-bottom: 12px;"><b>Reply to:</b> ${originalMsg.from}</div>
+            <div style="margin-bottom: 8px;">
+              <label style="display: block; margin-bottom: 4px;"><b>To:</b></label>
+              <input type="text" id="replyTo" value="${originalMsg.from}" readonly style="width: 100%; padding: 6px; border: 1px solid var(--ink); font-family: var(--ui-font); font-size: 13px; background: #f0f0f0;">
+            </div>
+            <div style="margin-bottom: 8px;">
+              <label style="display: block; margin-bottom: 4px;"><b>Subject:</b></label>
+              <input type="text" id="replySubject" value="Re: ${originalMsg.subject}" style="width: 100%; padding: 6px; border: 1px solid var(--ink); font-family: var(--ui-font); font-size: 13px;">
+            </div>
+            <div style="margin-bottom: 12px;">
+              <label style="display: block; margin-bottom: 4px;"><b>Body:</b></label>
+              <textarea id="replyBody" rows="8" style="width: 100%; padding: 6px; border: 1px solid var(--ink); font-family: var(--ui-font); font-size: 13px; resize: vertical;"></textarea>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button id="sendReply" style="border: 1px solid var(--ink); background: #fff; padding: 8px 16px; cursor: pointer; font-family: var(--ui-font); font-size: 14px; font-weight: 700;">Send</button>
+              <button id="cancelReply" style="border: 1px solid var(--ink); background: #fff; padding: 8px 16px; cursor: pointer; font-family: var(--ui-font); font-size: 14px;">Cancel</button>
+            </div>
+            <div id="replyStatus" style="margin-top: 12px; font-size: 12px;"></div>
+          `;
+
+          readingPane.appendChild(composer);
+
+          const sendBtn = composer.querySelector('#sendReply');
+          const cancelBtn = composer.querySelector('#cancelReply');
+          const status = composer.querySelector('#replyStatus');
+
+          sendBtn.addEventListener('click', () => {
+            const to = composer.querySelector('#replyTo').value;
+            const subject = composer.querySelector('#replySubject').value;
+            const body = composer.querySelector('#replyBody').value.trim();
+
+            if (!body) {
+              status.textContent = 'Body cannot be empty.';
+              status.style.color = 'var(--ink)';
+              return;
+            }
+
+            const newMessage = {
+              from: 'Lida (Narratoscope)',
+              to: to,
+              subject: subject,
+              body: body
+            };
+
+            saveOutboxMessage(newMessage);
+            
+            // Mark original as read
+            markAsRead(originalMsg.id);
+            originalMsg.unread = false;
+            updateUnreadBadge();
+
+            status.textContent = 'Sent.';
+            status.style.color = 'var(--ink)';
+
+            // Clear composer after a moment
+            setTimeout(() => {
+              if (currentFolder === 'outbox') {
+                renderMessageList('outbox');
+                renderReadingPane(getOutboxMessages()[0], 'outbox');
+              } else {
+                renderReadingPane(originalMsg, 'inbox');
+              }
+            }, 1000);
           });
 
-          wrap.appendChild(emailDiv);
+          cancelBtn.addEventListener('click', () => {
+            renderReadingPane(originalMsg, 'inbox');
+          });
+        }
+
+        // Folder switching
+        inboxBtn.addEventListener('click', () => {
+          currentFolder = 'inbox';
+          selectedMessage = null;
+          inboxBtn.style.fontWeight = '700';
+          outboxBtn.style.fontWeight = '400';
+          renderMessageList('inbox');
+          renderReadingPane(null, 'inbox');
         });
 
-        DesktopCore.spawnWindow({ title: 'Inbox', width: 500, height: 520, content: wrap });
+        outboxBtn.addEventListener('click', () => {
+          currentFolder = 'outbox';
+          selectedMessage = null;
+          inboxBtn.style.fontWeight = '400';
+          outboxBtn.style.fontWeight = '700';
+          renderMessageList('outbox');
+          renderReadingPane(null, 'outbox');
+        });
+
+        // Initialize
+        updateUnreadBadge();
+        inboxBtn.style.fontWeight = '700';
+        renderMessageList('inbox');
+        renderReadingPane(null, 'inbox');
+
+        DesktopCore.spawnWindow({ title: 'Mailbox', width: 800, height: 600, content: wrap });
       }
     });
 
