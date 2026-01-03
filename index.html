@@ -472,7 +472,7 @@ const DesktopCore = (() => {
       onOpen() {
         const content = `<div style="font-family: var(--ui-font); font-size: 14px; line-height: 1.6;">
           <p><b>System:</b> Narratoscope Editorial OS</p>
-          <p><b>User:</b> Lida Petrova</p>
+          <p style="display: flex; justify-content: space-between; align-items: center;"><span><b>User:</b> Lida Petrova</span><img src="assets/Lida.png" style="width: 3em; height: 3em; display: block; image-rendering: pixelated; flex-shrink: 0;" alt="Avatar"></p>
           <br>
           <p><b>Free disk space:</b> 312 MB</p>
           <p><b>Last backup:</b> unknown</p>
@@ -1181,12 +1181,26 @@ A.`,
           ico.style.width = '120px';
           ico.style.height = '120px';
           ico.style.margin = '0 auto';
-          ico.style.backgroundColor = '#ccc';
-          ico.style.border = '2px solid var(--ink)';
-          ico.style.display = 'grid';
-          ico.style.placeItems = 'center';
-          ico.style.fontSize = '32px';
-          ico.textContent = '?';
+          if (photoName === 'office_night.jpg') {
+            ico.style.backgroundColor = '#ccc';
+            ico.style.border = '2px solid var(--ink)';
+            ico.style.overflow = 'hidden';
+            const thumb = document.createElement('img');
+            thumb.src = 'assets/office_night.png';
+            thumb.style.width = '100%';
+            thumb.style.height = '100%';
+            thumb.style.objectFit = 'cover';
+            thumb.style.display = 'block';
+            thumb.style.imageRendering = 'pixelated';
+            ico.appendChild(thumb);
+          } else {
+            ico.style.backgroundColor = '#ccc';
+            ico.style.border = '2px solid var(--ink)';
+            ico.style.display = 'grid';
+            ico.style.placeItems = 'center';
+            ico.style.fontSize = '32px';
+            ico.textContent = '?';
+          }
 
           const cap = document.createElement('div');
           cap.textContent = photoName;
@@ -1194,15 +1208,54 @@ A.`,
           cap.style.fontSize = '12px';
 
           cell.addEventListener('click', () => {
-            DesktopCore.spawnWindow({
-              title: photoName,
-              width: 400,
-              height: 300,
-              content: `<div style="font-family: var(--ui-font); font-size: 14px; text-align: center; padding: 40px;">
+            let content;
+            if (photoName === 'office_night.jpg') {
+              const container = document.createElement('div');
+              container.style.height = '100%';
+              container.style.width = '100%';
+              container.style.padding = '0';
+              container.style.margin = '0';
+              container.style.boxSizing = 'border-box';
+              
+              const img = document.createElement('img');
+              img.src = 'assets/office_night.png';
+              img.style.width = '100%';
+              img.style.height = '100%';
+              img.style.objectFit = 'cover';
+              img.style.display = 'block';
+              img.style.imageRendering = 'pixelated';
+              img.alt = photoName;
+              
+              img.onerror = () => {
+                container.innerHTML = '';
+                container.style.fontFamily = 'var(--ui-font)';
+                container.style.fontSize = '14px';
+                container.style.textAlign = 'center';
+                container.style.padding = '40px';
+                container.innerHTML = '<div style="font-size: 48px; margin-bottom: 20px;">⚠</div><p><b>Failed to load image.</b></p><p style="margin-top: 10px; font-size: 12px; color: #666;">assets/office_night.png</p>';
+              };
+              
+              container.appendChild(img);
+              content = container;
+              
+              DesktopCore.spawnWindow({
+                title: photoName,
+                width: 1200,
+                height: 900,
+                content: content
+              });
+            } else {
+              content = `<div style="font-family: var(--ui-font); font-size: 14px; text-align: center; padding: 40px;">
                 <div style="font-size: 48px; margin-bottom: 20px;">⚠</div>
                 <p><b>File corrupted or removed.</b></p>
-              </div>`
-            });
+              </div>`;
+              DesktopCore.spawnWindow({
+                title: photoName,
+                width: 400,
+                height: 300,
+                content: content
+              });
+            }
           });
 
           cell.appendChild(ico);
