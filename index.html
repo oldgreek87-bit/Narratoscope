@@ -1878,11 +1878,16 @@ const layout = [
         }
         
         // Инициализируем рабочий стол и применяем обои
-        // Используем requestAnimationFrame для надежности
+        // Используем небольшую задержку для Safari (нужно время для регистрации модулей)
         const initFunc = () => {
           try {
-            if (typeof initDesktop === 'function') {
+            // Убеждаемся, что DesktopCore и registry доступны
+            if (typeof DesktopCore !== 'undefined' && DesktopCore.registry && typeof initDesktop === 'function') {
               initDesktop();
+            } else {
+              // Если еще не готово, повторяем попытку
+              setTimeout(initFunc, 50);
+              return;
             }
             if (typeof applyInitialWallpaper === 'function') {
               applyInitialWallpaper();
@@ -1893,12 +1898,8 @@ const layout = [
           }
         };
         
-        // Используем requestAnimationFrame, если доступен, иначе setTimeout
-        if (typeof requestAnimationFrame === 'function') {
-          requestAnimationFrame(initFunc);
-        } else {
-          setTimeout(initFunc, 0);
-        }
+        // Используем небольшую задержку для Safari (гарантирует, что модули зарегистрированы)
+        setTimeout(initFunc, 100);
       } catch (err) {
         console.error('Error entering desktop:', err);
         // Последний fallback: просто скрываем password screen
@@ -1909,8 +1910,20 @@ const layout = [
     }
 
     function initDesktop() {
-      const deskEl = document.querySelector('.desktop');
-      const maxW = deskEl.clientWidth; const maxH = deskEl.clientHeight;
+      try {
+        // Проверяем, что DesktopCore доступен
+        if (typeof DesktopCore === 'undefined' || !DesktopCore || !DesktopCore.registry) {
+          console.error('DesktopCore not available');
+          return;
+        }
+        
+        const deskEl = document.querySelector('.desktop');
+        if (!deskEl) {
+          console.error('Desktop element not found');
+          return;
+        }
+        
+        const maxW = deskEl.clientWidth; const maxH = deskEl.clientHeight;
       const root = getComputedStyle(document.documentElement);
       const ICON = parseInt(root.getPropertyValue('--icon-size')) || 180;
       const PAD = 24; // внутренний отступ от краёв
@@ -1935,13 +1948,30 @@ const layout = [
         return { x: PAD + Math.random() * (maxW - ICON - PAD*2), y: PAD + Math.random() * (maxH - ICON - PAD*2) };
       };
 
+      // Проверяем, что layout определен
+      if (!layout || !Array.isArray(layout)) {
+        console.error('Layout not defined');
+        return;
+      }
+
       layout.forEach((id) => {
-        const mod = DesktopCore.registry.get(id); if (!mod) return;
-        const saved = DesktopCore.getIconPosition(id, null);
-        const pos = saved || (USE_FIXED_LAYOUT && FIXED_POS[mod.id] ? pctToPx(FIXED_POS[mod.id]) : placeOne());
-        taken.push(pos);
-        DesktopCore.spawnIcon({ id: mod.id, title: mod.title, className: mod.iconClass, iconUrl: mod.iconUrl, x: pos.x, y: pos.y, onOpen: mod.onOpen, contextItems: mod.contextItems });
+        try {
+          const mod = DesktopCore.registry.get(id);
+          if (!mod) {
+            console.warn('Module not found:', id);
+            return;
+          }
+          const saved = DesktopCore.getIconPosition(id, null);
+          const pos = saved || (USE_FIXED_LAYOUT && FIXED_POS[mod.id] ? pctToPx(FIXED_POS[mod.id]) : placeOne());
+          taken.push(pos);
+          DesktopCore.spawnIcon({ id: mod.id, title: mod.title, className: mod.iconClass, iconUrl: mod.iconUrl, x: pos.x, y: pos.y, onOpen: mod.onOpen, contextItems: mod.contextItems });
+        } catch (err) {
+          console.error('Error creating icon for', id, ':', err);
+        }
       });
+      } catch (err) {
+        console.error('Error in initDesktop:', err);
+      }
     }
 
     /* ===== Password Screen ===== */
