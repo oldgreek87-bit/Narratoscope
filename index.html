@@ -1862,28 +1862,49 @@ const layout = [
     // Единая функция для детерминированного перехода на рабочий стол
     function enterDesktop() {
       try {
-        // Скрываем экран пароля
-        passwordScreen.classList.add('hidden');
+        // Скрываем экран пароля (самое важное - сделать это сразу)
+        if (passwordScreen) {
+          passwordScreen.classList.add('hidden');
+        }
         
-        // Запускаем boot sequence (анимация загрузки)
-        bootSequence();
+        // Запускаем boot sequence (анимация загрузки) - если функция доступна
+        if (typeof bootSequence === 'function') {
+          try {
+            bootSequence();
+          } catch (e) {
+            console.error('Error in bootSequence:', e);
+            // Продолжаем даже если boot sequence не работает
+          }
+        }
         
         // Инициализируем рабочий стол и применяем обои
-        // Используем requestAnimationFrame для надежности, но без большой задержки
-        requestAnimationFrame(() => {
+        // Используем requestAnimationFrame для надежности
+        const initFunc = () => {
           try {
-            initDesktop();
-            applyInitialWallpaper();
+            if (typeof initDesktop === 'function') {
+              initDesktop();
+            }
+            if (typeof applyInitialWallpaper === 'function') {
+              applyInitialWallpaper();
+            }
           } catch (err) {
             console.error('Error initializing desktop:', err);
-            // Если initDesktop не сработал, все равно показываем рабочий стол
-            passwordScreen.classList.add('hidden');
+            // Все равно продолжаем - экран пароля уже скрыт
           }
-        });
+        };
+        
+        // Используем requestAnimationFrame, если доступен, иначе setTimeout
+        if (typeof requestAnimationFrame === 'function') {
+          requestAnimationFrame(initFunc);
+        } else {
+          setTimeout(initFunc, 0);
+        }
       } catch (err) {
         console.error('Error entering desktop:', err);
-        // Fallback: просто скрываем password screen
-        passwordScreen.classList.add('hidden');
+        // Последний fallback: просто скрываем password screen
+        if (passwordScreen) {
+          passwordScreen.classList.add('hidden');
+        }
       }
     }
 
@@ -1932,35 +1953,76 @@ const layout = [
 
     function checkPassword() {
       try {
-        const values = passwordInputs.map(inp => inp.value.trim().toLowerCase());
+        // Безопасная проверка наличия элементов
+        if (!passwordInputs || passwordInputs.length === 0) {
+          console.error('Password inputs not found');
+          return;
+        }
+        
+        const values = passwordInputs.map(inp => inp ? inp.value.trim().toLowerCase() : '');
         const correct = PASSWORD_WORDS.every((word, i) => values[i] === word);
+        
         if (correct) {
-          enterDesktop();
+          // Всегда вызываем enterDesktop, даже если есть ошибки внутри
+          if (typeof enterDesktop === 'function') {
+            enterDesktop();
+          } else {
+            // Fallback: если функция не определена, просто скрываем экран пароля
+            console.error('enterDesktop function not found, using fallback');
+            if (passwordScreen) passwordScreen.classList.add('hidden');
+          }
         } else {
-          passwordError.textContent = 'Incorrect password. Please try again.';
-          passwordInputs.forEach(inp => { inp.value = ''; inp.style.borderColor = '#9b0000'; });
+          if (passwordError) passwordError.textContent = 'Incorrect password. Please try again.';
+          passwordInputs.forEach(inp => { 
+            if (inp) {
+              inp.value = ''; 
+              inp.style.borderColor = '#9b0000'; 
+            }
+          });
           setTimeout(() => {
-            passwordInputs.forEach(inp => { inp.style.borderColor = 'var(--ink)'; });
-            passwordError.textContent = '';
+            passwordInputs.forEach(inp => { 
+              if (inp) inp.style.borderColor = 'var(--ink)'; 
+            });
+            if (passwordError) passwordError.textContent = '';
           }, 2000);
-          passwordInputs[0].focus();
+          if (passwordInputs[0]) passwordInputs[0].focus();
         }
       } catch (err) {
+        // В случае ошибки все равно пытаемся перейти на рабочий стол
         console.error('Error in checkPassword:', err);
-        passwordError.textContent = 'An error occurred. Please try again.';
+        // Не показываем ошибку пользователю, вместо этого пытаемся продолжить
+        if (typeof enterDesktop === 'function') {
+          try {
+            enterDesktop();
+          } catch (e) {
+            console.error('Error in enterDesktop fallback:', e);
+            // Последний fallback: просто скрываем экран пароля
+            if (passwordScreen) passwordScreen.classList.add('hidden');
+          }
+        } else {
+          if (passwordScreen) passwordScreen.classList.add('hidden');
+        }
       }
     }
 
     passwordSubmit.addEventListener('click', checkPassword);
     passwordInputs.forEach((inp, i) => {
-      inp.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-          if (i < passwordInputs.length - 1) passwordInputs[i + 1].focus();
-          else checkPassword();
+      // Используем keydown вместо keypress для лучшей совместимости (особенно на Mac)
+      inp.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.keyCode === 13) {
+          e.preventDefault(); // Предотвращаем стандартное поведение
+          if (i < passwordInputs.length - 1) {
+            passwordInputs[i + 1].focus();
+          } else {
+            checkPassword();
+          }
         }
       });
     });
-    passwordInputs[0].focus();
+    // Фокусируемся на первом поле только если оно существует
+    if (passwordInputs[0]) {
+      passwordInputs[0].focus();
+    }
     } // end if (!isMobileDevice)
   </script>
 
