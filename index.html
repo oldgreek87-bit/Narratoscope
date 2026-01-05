@@ -80,6 +80,21 @@
     .icon .label { margin-top: 2px; padding: 2px 6px; border: 1px dashed transparent; border-radius: 0; background: transparent; color: var(--ink); text-shadow: none; line-height: 1.2; font-size: var(--font-icon); letter-spacing:.3px; }
     /* Выделение: инвертированные цвета */
     .icon.selected .label { background: var(--ink); color: #fff; border-color: var(--ink); }
+    
+    /* Folder file labels ONLY (scoped - does NOT affect desktop .icon .label) */
+    .folder-file-label {
+      text-align: center;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      line-clamp: 2;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      word-break: break-word;
+      overflow-wrap: break-word;
+      max-width: 120px;
+      width: 120px;
+    }
 
     /* Контекстное меню */
     .context-menu { position: fixed; z-index: var(--z-menu); background: #fff; border: 2px solid var(--ink); min-width: 180px; font-size: var(--font-controls); }
@@ -495,31 +510,66 @@ const DesktopCore = (() => {
 
         const draftsFiles = [
           {
-            name: 'editorial_intro_draft.txt',
-            content: `We keep pretending this is just a magazine.
-It isn't.
+            name: 'DnD_character_draft.txt',
+            content: `D&D character draft
 
-It's a device.
+Name: Elian Frost
+Race: Half-Elf
+Class: Ranger (maybe multiclass later)
 
-Every issue slightly alters the way readers look at things.
-Sometimes I worry that one day it will start looking back.`
+Alignment:
+Neutral Good (leaning chaotic when tired)
+
+Background:
+Cartographer
+— good with maps
+— bad with destinations
+
+Personality:
+• notices small details
+• avoids leadership but ends up there
+• trusts intuition over plans
+
+Flaws:
+• overthinks
+• slow to act
+• hates unfinished stories
+
+Note:
+give him a reason to stay.`
           },
           {
-            name: 'things_we_cut.txt',
-            content: `— a whole section about mirrors
-— the dream with the corridor and the child
-— the paragraph where the Narratoscope hums
+            name: 'printer_setup_notes.pdf',
+            content: `PRINTING NOTES
 
-(Rodion said: "too much".
-He's probably right.)`
+• CMYK, not RGB
+• Rich black only for large areas
+• Text: 100% K
+
+Paper:
+— uncoated feels better
+— slightly yellow > pure white
+
+Margins:
+— inner margin larger (binding!)
+— check bleed twice
+
+Before sending to print:
+1. export PDF/X-1a
+2. check fonts embedded
+3. spellcheck titles manually`
           },
           {
-            name: 'margin_notes_loose.txt',
-            content: `"Reader is not passive."
+            name: 'notes_from_other_magazines.txt',
+            content: `Things I like elsewhere:
 
-"Reader is not innocent."
+• courage to be boring
+• space for silence
+• trusting the reader
 
-"Reader is the instrument."`
+Things I don't:
+• performative cleverness
+• fake intimacy`
           }
         ];
 
@@ -542,6 +592,7 @@ He's probably right.)`
 
         const cap = document.createElement('div');
           cap.textContent = file.name;
+          cap.className = 'folder-file-label';
         cap.style.marginTop = '6px';
           cap.style.fontSize = '12px';
 
@@ -603,6 +654,73 @@ He's probably right.)`
           <p style="margin-top: 16px; font-style: italic;">We are absolutely not ready.<br>Proceeding anyway.</p>
         </div>`;
         DesktopCore.spawnWindow({ title: 'Expenses.xlsx', width: 600, height: 400, content: content });
+      }
+    });
+
+    /* МОДУЛЬ: do_not_open.txt */
+    DesktopCore.register({ id: 'do-not-open', title: 'do_not_open.txt', iconClass: '', iconUrl: 'assets/icons/txt.png',
+      onOpen() {
+        const content = `<pre style="white-space: pre-wrap; font-family: var(--ui-font); font-size: 14px; line-height: 1.6;">You opened it anyway.
+
+</pre>`;
+        DesktopCore.spawnWindow({ title: 'do_not_open.txt', width: 640, height: 460, content: content });
+      }
+    });
+
+    /* МОДУЛЬ: PUBLISHING_CHEAT_SHEET.txt */
+    DesktopCore.register({ id: 'publishing-cheat-sheet', title: 'PUBLISHING_CHEAT_SHEET.txt', iconClass: '', iconUrl: 'assets/icons/txt.png',
+      onOpen() {
+        const content = `<pre style="white-space: pre-wrap; font-family: var(--ui-font); font-size: 14px; line-height: 1.6;">PUBLISHING CHEAT SHEET
+(for when my brain is tired)
+
+QUOTATION MARKS
+English:
+"double quotes" — default
+'single quotes' — quotes inside quotes
+
+French:
+« guillemets »
+(use spaces inside)
+
+Russian:
+«ёлочки», then „лапки"
+
+— Do NOT mix styles inside one text.
+
+DASHES
+Hyphen (-)
+— for compound words (well-known)
+
+En dash (–)
+— ranges: 1998–2004
+
+Em dash (—)
+— interruptions, pauses
+— no spaces in US style
+— spaces optional in UK style
+
+ELLIPSIS
+…
+Not three dots.
+Ever.
+
+AMPERSAND (&)
+— use only in names, brands, headers
+— never in running text
+
+ITALICS
+— foreign words (sparingly)
+— internal thoughts (sparingly)
+— titles of books
+
+CAPITALS
+— don't shout
+— if everything is important, nothing is
+
+RULE OF THUMB
+If the typography is invisible,
+it's working.</pre>`;
+        DesktopCore.spawnWindow({ title: 'PUBLISHING_CHEAT_SHEET.txt', width: 640, height: 460, content: content });
       }
     });
 
@@ -1204,6 +1322,7 @@ A.`,
 
           const cap = document.createElement('div');
           cap.textContent = photoName;
+          cap.className = 'folder-file-label';
           cap.style.marginTop = '8px';
           cap.style.fontSize = '12px';
 
@@ -1268,87 +1387,6 @@ A.`,
       }
     });
 
-    /* МОДУЛЬ: Leave a Trace */
-    (() => {
-      function getTraceLines() {
-        try {
-          const saved = localStorage.getItem('narratoscope_trace');
-          return saved ? JSON.parse(saved) : [];
-        } catch(e) {
-          return [];
-        }
-      }
-
-      function saveTraceLines(lines) {
-        try {
-          localStorage.setItem('narratoscope_trace', JSON.stringify(lines));
-        } catch(e) {}
-      }
-
-      DesktopCore.register({ id: 'leave-a-trace', title: 'Leave a Trace', iconClass: '', iconUrl: 'assets/icons/txt.png',
-        onOpen() {
-          let traceLines = getTraceLines();
-          const wrap = document.createElement('div');
-          wrap.style.fontFamily = 'var(--ui-font)';
-          wrap.style.fontSize = '14px';
-
-          const linesDiv = document.createElement('div');
-          linesDiv.id = 'traceLines';
-          linesDiv.style.border = '1px solid var(--ink)';
-          linesDiv.style.padding = '12px';
-          linesDiv.style.minHeight = '200px';
-          linesDiv.style.background = 'var(--bg-paper)';
-          linesDiv.style.marginBottom = '16px';
-          linesDiv.style.fontFamily = 'monospace';
-          linesDiv.style.fontSize = '12px';
-          linesDiv.style.whiteSpace = 'pre-wrap';
-          linesDiv.textContent = traceLines.join('\n');
-
-          wrap.innerHTML = `
-            <p style="margin-bottom: 16px;"><b>Someone left this file open.</b></p>
-            <p style="margin-bottom: 16px;">You can add one line.</p>
-            <p style="margin-bottom: 20px;">Don't explain.<br>Don't sign your name.</p>
-          `;
-          wrap.appendChild(linesDiv);
-          wrap.innerHTML += `
-            <div style="margin-bottom: 8px;">
-              <input type="text" id="traceInput" placeholder="Type your line here..." style="width: 100%; padding: 6px; border: 2px solid var(--ink); font-family: var(--ui-font); font-size: 14px;">
-  </div>
-            <button id="traceSave" style="border: 2px solid var(--ink); background: #fff; padding: 8px 16px; cursor: pointer; font-family: var(--ui-font); font-size: 14px; font-weight: 700;">Save</button>
-            <div id="traceStatus" style="margin-top: 12px; font-size: 12px;"></div>
-          `;
-
-          DesktopCore.spawnWindow({ title: 'Leave a Trace', width: 560, height: 460, content: wrap });
-
-          const input = wrap.querySelector('#traceInput');
-          const saveBtn = wrap.querySelector('#traceSave');
-          const status = wrap.querySelector('#traceStatus');
-          const linesDivEl = wrap.querySelector('#traceLines');
-
-          function updateLinesDisplay() {
-            linesDivEl.textContent = traceLines.join('\n');
-          }
-
-          saveBtn.addEventListener('click', () => {
-            const line = input.value.trim();
-            if (line) {
-              traceLines.push(line);
-              input.value = '';
-              updateLinesDisplay();
-              saveTraceLines(traceLines);
-              status.innerHTML = 'Line added.<br>It will be read by someone else.<br>Eventually.';
-              status.style.color = 'var(--ink)';
-            }
-          });
-
-          input.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-              saveBtn.click();
-            }
-          });
-        }
-      });
-    })();
 
     /* МОДУЛЬ: Trash */
     (() => {
@@ -1556,12 +1594,9 @@ And maybe that's all a magazine needs to be now. Not a format. Not a business mo
 
           const cap = document.createElement('div');
           cap.textContent = trashFile.name;
+          cap.className = 'folder-file-label';
           cap.style.marginTop = '6px';
           cap.style.fontSize = '12px';
-          cap.style.overflow = 'hidden';
-          cap.style.textOverflow = 'ellipsis';
-          cap.style.whiteSpace = 'nowrap';
-          cap.style.width = '100%';
 
           // Right-click context menu for Restore (only action allowed)
           cell.addEventListener('contextmenu', (e) => {
@@ -1627,18 +1662,20 @@ const layout = [
       'expenses',       // Expenses.xlsx
       'inbox',          // Inbox
       'photos',         // Photos
-      'leave-a-trace',  // Leave a Trace
+      'do-not-open',    // do_not_open.txt
+      'publishing-cheat-sheet', // PUBLISHING_CHEAT_SHEET.txt
       'trash'           // Trash
 ];
     // Фиксированная раскладка (проценты от рабочей области)
     const USE_FIXED_LAYOUT = true;
-    const FIXED_POS = {
+      const FIXED_POS = {
       'my-computer':    { xPct: 6,  yPct: 10 },
       'drafts':         { xPct: 24, yPct: 10 },
       'expenses':       { xPct: 42, yPct: 10 },
       'inbox':          { xPct: 6,  yPct: 35 },
       'photos':         { xPct: 24, yPct: 35 },
-      'leave-a-trace':  { xPct: 42, yPct: 35 },
+      'do-not-open':    { xPct: 42, yPct: 35 },
+      'publishing-cheat-sheet': { xPct: 60, yPct: 35 },
       'trash':          { xPct: 60, yPct: 10 }
 };
 
