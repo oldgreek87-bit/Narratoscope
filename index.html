@@ -1854,8 +1854,37 @@ const layout = [
 
     // Применяем стартовый фон
     function applyInitialWallpaper(){
-      WP_INDEX = 0;
+      // WP_INDEX не используется, так как обои применяются через CSS
+      // Функция оставлена для совместимости
       applyWallpaper();
+    }
+    
+    // Единая функция для детерминированного перехода на рабочий стол
+    function enterDesktop() {
+      try {
+        // Скрываем экран пароля
+        passwordScreen.classList.add('hidden');
+        
+        // Запускаем boot sequence (анимация загрузки)
+        bootSequence();
+        
+        // Инициализируем рабочий стол и применяем обои
+        // Используем requestAnimationFrame для надежности, но без большой задержки
+        requestAnimationFrame(() => {
+          try {
+            initDesktop();
+            applyInitialWallpaper();
+          } catch (err) {
+            console.error('Error initializing desktop:', err);
+            // Если initDesktop не сработал, все равно показываем рабочий стол
+            passwordScreen.classList.add('hidden');
+          }
+        });
+      } catch (err) {
+        console.error('Error entering desktop:', err);
+        // Fallback: просто скрываем password screen
+        passwordScreen.classList.add('hidden');
+      }
     }
 
     function initDesktop() {
@@ -1902,20 +1931,23 @@ const layout = [
     const passwordError = document.getElementById('passwordError');
 
     function checkPassword() {
-      const values = passwordInputs.map(inp => inp.value.trim().toLowerCase());
-      const correct = PASSWORD_WORDS.every((word, i) => values[i] === word);
-      if (correct) {
-        passwordScreen.classList.add('hidden');
-        bootSequence();
-        setTimeout(() => { initDesktop(); applyInitialWallpaper(); }, 100);
-      } else {
-        passwordError.textContent = 'Incorrect password. Please try again.';
-        passwordInputs.forEach(inp => { inp.value = ''; inp.style.borderColor = '#9b0000'; });
-        setTimeout(() => {
-          passwordInputs.forEach(inp => { inp.style.borderColor = 'var(--ink)'; });
-          passwordError.textContent = '';
-        }, 2000);
-        passwordInputs[0].focus();
+      try {
+        const values = passwordInputs.map(inp => inp.value.trim().toLowerCase());
+        const correct = PASSWORD_WORDS.every((word, i) => values[i] === word);
+        if (correct) {
+          enterDesktop();
+        } else {
+          passwordError.textContent = 'Incorrect password. Please try again.';
+          passwordInputs.forEach(inp => { inp.value = ''; inp.style.borderColor = '#9b0000'; });
+          setTimeout(() => {
+            passwordInputs.forEach(inp => { inp.style.borderColor = 'var(--ink)'; });
+            passwordError.textContent = '';
+          }, 2000);
+          passwordInputs[0].focus();
+        }
+      } catch (err) {
+        console.error('Error in checkPassword:', err);
+        passwordError.textContent = 'An error occurred. Please try again.';
       }
     }
 
