@@ -28,7 +28,7 @@
       --window-min-w: 360px;
       --window-min-h: 220px;
       --taskbar-h: 36px;
-      --z-window: 10; --z-menu: 30; --z-boot: 1000; --z-password: 1001;
+      --z-window: 10; --z-menu: 30; --z-boot: 1000; --z-password: 1001; --z-mobile-block: 1002;
 
       --ui-font: 'FSEX','Pixel UI','Press Start 2P', ui-monospace, "Courier New", monospace;
       --ui-font-size: 20px; /* базовый размер в окнах */
@@ -286,9 +286,50 @@
     .hidden { display: none !important; }
     .noselect { user-select: none; }
 
+    /* Mobile/tablet blocker */
+    .mobile-blocker {
+      position: fixed;
+      inset: 0;
+      background-color: var(--bg-paper);
+      background-image: url('data:image/svg+xml;utf8,<svg width="4" height="12" xmlns="http://www.w3.org/2000/svg"><rect x="1" y="1" width="1" height="3" fill="%23000"/><rect x="2" y="7" width="1" height="3" fill="%23000"/></svg>');
+      background-size: 4px 12px;
+      color: var(--text);
+      display: grid;
+      place-items: center;
+      z-index: var(--z-mobile-block);
+      font-family: var(--ui-font);
+      user-select: none;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+    .mobile-blocker-box {
+      background: #fff;
+      border: 2px solid var(--ink);
+      padding: 32px 40px;
+      text-align: center;
+      max-width: 500px;
+    }
+    .mobile-blocker-box p {
+      margin: 0 0 16px 0;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    .mobile-blocker-box p:last-of-type {
+      margin-bottom: 0;
+    }
+
   </style>
 </head>
 <body>
+  <!-- Mobile/tablet blocker -->
+  <div id="mobileBlocker" class="mobile-blocker hidden">
+    <div class="mobile-blocker-box">
+      <p>You've reached a desktop.</p>
+      <p>Files can be dragged.<br>Windows can be moved.<br>Some things are meant to be opened slowly.</p>
+      <p>This space doesn't exist on phones or tablets.<br>Please come back from a desktop computer.</p>
+    </div>
+  </div>
+
   <!-- Экран ввода пароля -->
   <div id="passwordScreen" class="password-screen">
     <div class="password-box">
@@ -335,6 +376,48 @@
        ║  • Регистрация модулей • Рендер иконок • Drag&Drop • Контекстное     ║
        ║    меню • Окна (свернуть/закрыть/resize) • Часы • Таскбар‑кнопки    ║
        ╚══════════════════════════════════════════════════════════════════════╝ */
+
+    /* Mobile/tablet detection and blocking */
+    let isMobileDevice = false;
+    (function() {
+      const mobileBlocker = document.getElementById('mobileBlocker');
+      
+      function isMobileOrTablet() {
+        // Check for coarse pointer (touch devices)
+        if (window.matchMedia('(pointer: coarse)').matches) {
+          return true;
+        }
+        // Check for small screen size
+        if (window.innerWidth < 768 || window.innerHeight < 600) {
+          return true;
+        }
+        // Check for touch capability
+        if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
+          // But allow if screen is large enough (tablets in landscape)
+          if (window.innerWidth >= 1024 && window.innerHeight >= 768) {
+            return false;
+          }
+          return true;
+        }
+        return false;
+      }
+      
+      if (isMobileOrTablet()) {
+        isMobileDevice = true;
+        mobileBlocker.classList.remove('hidden');
+        // Hide all other UI elements
+        document.getElementById('passwordScreen').classList.add('hidden');
+        document.getElementById('desktop').style.display = 'none';
+        document.querySelector('.taskbar').style.display = 'none';
+        return;
+      }
+      
+      // Hide blocker if desktop
+      mobileBlocker.classList.add('hidden');
+    })();
+    
+    // Skip all initialization if mobile device
+    if (!isMobileDevice) {
 
     /* ===== Обои рабочего стола =====
        Dithering паттерн уже применен в CSS body */
@@ -462,20 +545,87 @@ const DesktopCore = (() => {
 
         desktop.appendChild(el); return el; };
 
-      const defaultIconMenu = (onOpen) => ([ { label: 'Открыть', action: () => onOpen?.() }, { label: 'Печать…', action: () => window.print() }, { label: 'Поделиться…', action: async () => { try { await navigator.share?.({ title: 'Bookflix', url: location.href }) } catch {} } }, ]);
+      const defaultIconMenu = (onOpen) => ([ { label: 'Open', action: () => onOpen?.() } ]);
 
       /* ===== Обои ===== */
-      /* ПКМ по рабочему столу: обновить */
+      const wallpapers = ['wallpaper.png', 'wallpaper_1.png', 'wallpaper_3.png'];
+      let currentWallpaperIndex = 0;
+      
+      function changeWallpaper() {
+        currentWallpaperIndex = (currentWallpaperIndex + 1) % wallpapers.length;
+        desktop.style.backgroundImage = `url('assets/icons/${wallpapers[currentWallpaperIndex]}')`;
+      }
+      
+      /* ПКМ по рабочему столу: change wallpaper */
       desktop.addEventListener('contextmenu', (e) => {
         e.preventDefault();
         showContext(e.clientX, e.clientY, [
-          { label: 'Обновить', action: () => location.reload() },
+          { label: 'Change wallpaper', action: () => changeWallpaper() },
         ]);
       });
 
+      /* Text file template system */
+      function renderTextFile(content, filename) {
+        // Simple HTML escape
+        const escapeHtml = (text) => {
+          const div = document.createElement('div');
+          div.textContent = text;
+          return div.innerHTML;
+        };
+        
+        // Determine template based on filename
+        let template = 'system'; // default
+        const name = filename.toLowerCase();
+        
+        if (name.includes('cheat') || name.includes('publishing') || name.includes('draft') || name.includes('dnd')) {
+          template = 'editorial';
+        } else if (name.includes('notes_from') || (name.includes('note') && name.includes('other'))) {
+          template = 'found';
+        } else if (name.includes('printer') || name.includes('setup') || name.includes('do_not_open')) {
+          template = 'system';
+        }
+        
+        // System note: utilitarian, monospace, tight
+        if (template === 'system') {
+          return `<pre style="white-space: pre-wrap; font-family: var(--ui-font); font-size: 13px; line-height: 1.4; margin: 0; padding: 12px;">${escapeHtml(content)}</pre>`;
+        }
+        
+        // Editorial draft: more airy, margins, headings
+        if (template === 'editorial') {
+          // Convert ALL CAPS lines to headings
+          const lines = content.split('\n');
+          const processed = lines.map(line => {
+            const trimmed = line.trim();
+            const escaped = escapeHtml(line);
+            // If line is ALL CAPS and not empty, make it a heading
+            if (trimmed && trimmed === trimmed.toUpperCase() && trimmed.match(/^[A-Z\s\d\-—–]+$/)) {
+              return `<div style="font-weight: 700; font-size: 16px; margin-top: 20px; margin-bottom: 8px; letter-spacing: 0.5px;">${escaped}</div>`;
+            }
+            return line ? `<div style="margin-bottom: 4px;">${escaped}</div>` : '<div style="height: 8px;"></div>';
+          }).join('');
+          return `<div style="font-family: var(--ui-font); font-size: 14px; line-height: 1.8; padding: 24px 32px; max-width: 600px; margin: 0 auto;">${processed}</div>`;
+        }
+        
+        // Found note: handmade vibe, spacing, rules
+        if (template === 'found') {
+          const lines = content.split('\n');
+          const processed = lines.map((line, i) => {
+            if (!line.trim() && i > 0 && i < lines.length - 1) {
+              return '<div style="height: 16px; border-bottom: 1px dotted var(--ink); margin: 12px 0;"></div>';
+            }
+            const escaped = escapeHtml(line);
+            return line ? `<div style="margin: 8px 0; padding-left: 16px; position: relative;">${escaped}</div>` : '<div style="height: 12px;"></div>';
+          }).join('');
+          return `<div style="font-family: var(--ui-font); font-size: 14px; line-height: 1.9; padding: 20px 28px;">${processed}</div>`;
+        }
+        
+        // Fallback
+        return `<pre style="white-space: pre-wrap; font-family: var(--ui-font); font-size: 14px; line-height: 1.6;">${escapeHtml(content)}</pre>`;
+      }
+
       /* API ядра */
       function openModule(id){ const mod = registry.get(id); mod?.onOpen?.(); }
-      return { register(def) { if (!def?.id) throw new Error('Модуль без id!'); registry.set(def.id, def); }, spawnWindow: createWindow, spawnIcon(def) { return createIcon(def); }, getIconPosition(id, fb) { return iconState.get(id) || fb; }, showContext, hideContext, get registry() { return registry; }, openModule };
+      return { register(def) { if (!def?.id) throw new Error('Модуль без id!'); registry.set(def.id, def); }, spawnWindow: createWindow, spawnIcon(def) { return createIcon(def); }, getIconPosition(id, fb) { return iconState.get(id) || fb; }, showContext, hideContext, get registry() { return registry; }, openModule, renderTextFile };
     })();
 
     /* ╔══════════════════════════════════════════════════════════════════════╗
@@ -601,7 +751,7 @@ Things I don't:
               title: file.name,
               width: 640,
               height: 460,
-              content: `<pre style="white-space: pre-wrap; font-family: var(--ui-font); font-size: 14px; line-height: 1.6;">${file.content}</pre>`
+              content: DesktopCore.renderTextFile(file.content, file.name)
             });
           });
 
@@ -660,17 +810,15 @@ Things I don't:
     /* МОДУЛЬ: do_not_open.txt */
     DesktopCore.register({ id: 'do-not-open', title: 'do_not_open.txt', iconClass: '', iconUrl: 'assets/icons/txt.png',
       onOpen() {
-        const content = `<pre style="white-space: pre-wrap; font-family: var(--ui-font); font-size: 14px; line-height: 1.6;">You opened it anyway.
-
-</pre>`;
+        const content = DesktopCore.renderTextFile('You opened it anyway.\n\n', 'do_not_open.txt');
         DesktopCore.spawnWindow({ title: 'do_not_open.txt', width: 640, height: 460, content: content });
       }
     });
 
     /* МОДУЛЬ: PUBLISHING_CHEAT_SHEET.txt */
     DesktopCore.register({ id: 'publishing-cheat-sheet', title: 'PUBLISHING_CHEAT_SHEET.txt', iconClass: '', iconUrl: 'assets/icons/txt.png',
-      onOpen() {
-        const content = `<pre style="white-space: pre-wrap; font-family: var(--ui-font); font-size: 14px; line-height: 1.6;">PUBLISHING CHEAT SHEET
+onOpen() {
+        const content = DesktopCore.renderTextFile(`PUBLISHING CHEAT SHEET
 (for when my brain is tired)
 
 QUOTATION MARKS
@@ -719,7 +867,7 @@ CAPITALS
 
 RULE OF THUMB
 If the typography is invisible,
-it's working.</pre>`;
+it's working.`, 'PUBLISHING_CHEAT_SHEET.txt');
         DesktopCore.spawnWindow({ title: 'PUBLISHING_CHEAT_SHEET.txt', width: 640, height: 460, content: content });
       }
     });
@@ -1162,7 +1310,7 @@ A.`,
             <div style="margin-bottom: 8px;">
               <label style="display: block; margin-bottom: 4px;"><b>To:</b></label>
               <input type="text" id="replyTo" value="${originalMsg.from}" readonly style="width: 100%; padding: 6px; border: 1px solid var(--ink); font-family: var(--ui-font); font-size: 13px; background: #E8E5E0;">
-            </div>
+  </div>
             <div style="margin-bottom: 8px;">
               <label style="display: block; margin-bottom: 4px;"><b>Subject:</b></label>
               <input type="text" id="replySubject" value="Re: ${originalMsg.subject}" style="width: 100%; padding: 6px; border: 1px solid var(--ink); font-family: var(--ui-font); font-size: 13px; background: var(--bg-paper);">
@@ -1357,10 +1505,19 @@ A.`,
               container.appendChild(img);
               content = container;
               
+              // Calculate 30% smaller (70% of original size)
+              const photoWidth = Math.round(1200 * 0.7);
+              const photoHeight = Math.round(900 * 0.7);
+              
+              // Ensure it doesn't exceed viewport
+              const desktopEl = document.querySelector('.desktop');
+              const maxWidth = desktopEl ? desktopEl.clientWidth - 24 : photoWidth;
+              const maxHeight = desktopEl ? desktopEl.clientHeight - 24 : photoHeight;
+              
               DesktopCore.spawnWindow({
                 title: photoName,
-                width: 1200,
-                height: 900,
+                width: Math.min(photoWidth, maxWidth),
+                height: Math.min(photoHeight, maxHeight),
                 content: content
               });
             } else {
@@ -1668,7 +1825,7 @@ const layout = [
 ];
     // Фиксированная раскладка (проценты от рабочей области)
     const USE_FIXED_LAYOUT = true;
-      const FIXED_POS = {
+    const FIXED_POS = {
       'my-computer':    { xPct: 6,  yPct: 10 },
       'drafts':         { xPct: 24, yPct: 10 },
       'expenses':       { xPct: 42, yPct: 10 },
@@ -1772,6 +1929,7 @@ const layout = [
       });
     });
     passwordInputs[0].focus();
+    } // end if (!isMobileDevice)
   </script>
 
 
