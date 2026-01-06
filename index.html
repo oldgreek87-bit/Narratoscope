@@ -816,7 +816,7 @@ Things I don't:
     });
 
     /* МОДУЛЬ: PUBLISHING_CHEAT_SHEET.txt */
-    DesktopCore.register({ id: 'publishing-cheat-sheet', title: 'PUBLISHING_CHEAT_SHEET.txt', iconClass: '', iconUrl: 'assets/icons/txt.png',
+    DesktopCore.register({ id: 'publishing-cheat-sheet', title: 'CHEAT_SHEET.txt', iconClass: '', iconUrl: 'assets/icons/txt.png',
 onOpen() {
         const content = DesktopCore.renderTextFile(`PUBLISHING CHEAT SHEET
 (for when my brain is tired)
@@ -1815,26 +1815,14 @@ And maybe that's all a magazine needs to be now. Not a format. Not a business mo
     // Порядок появления иконок (фиксированный)
 const layout = [
       'my-computer',    // My Computer
+      'inbox',          // Inbox (Mailbox)
       'drafts',         // Drafts
-      'expenses',       // Expenses.xlsx
-      'inbox',          // Inbox
       'photos',         // Photos
+      'expenses',       // Expenses.xlsx
       'do-not-open',    // do_not_open.txt
-      'publishing-cheat-sheet', // PUBLISHING_CHEAT_SHEET.txt
+      'publishing-cheat-sheet', // CHEAT_SHEET.txt
       'trash'           // Trash
 ];
-    // Фиксированная раскладка (проценты от рабочей области)
-    const USE_FIXED_LAYOUT = true;
-    const FIXED_POS = {
-      'my-computer':    { xPct: 6,  yPct: 10 },
-      'drafts':         { xPct: 24, yPct: 10 },
-      'expenses':       { xPct: 42, yPct: 10 },
-      'inbox':          { xPct: 6,  yPct: 35 },
-      'photos':         { xPct: 24, yPct: 35 },
-      'do-not-open':    { xPct: 42, yPct: 35 },
-      'publishing-cheat-sheet': { xPct: 60, yPct: 35 },
-      'trash':          { xPct: 60, yPct: 10 }
-};
 
     function bootSequence() {
       const bootEl = document.getElementById('boot');
@@ -1878,28 +1866,57 @@ const layout = [
         }
         
         // Инициализируем рабочий стол и применяем обои
-        // Используем небольшую задержку для Safari (нужно время для регистрации модулей)
-        const initFunc = () => {
+        // Используем "wait until ready" стратегию для macOS/Safari
+        const waitForReady = () => {
           try {
-            // Убеждаемся, что DesktopCore и registry доступны
-            if (typeof DesktopCore !== 'undefined' && DesktopCore.registry && typeof initDesktop === 'function') {
+            const deskEl = document.querySelector('.desktop');
+            const root = getComputedStyle(document.documentElement);
+            const ICON = parseInt(root.getPropertyValue('--icon-size')) || 180;
+            
+            // Проверяем условия готовности
+            const isRegistryReady = typeof DesktopCore !== 'undefined' && 
+                                   DesktopCore && 
+                                   DesktopCore.registry && 
+                                   DesktopCore.registry.size > 0;
+            
+            const isDesktopReady = deskEl && 
+                                  deskEl.clientWidth > ICON && 
+                                  deskEl.clientHeight > ICON;
+            
+            if (isRegistryReady && isDesktopReady && typeof initDesktop === 'function') {
+              // Готово - инициализируем
               initDesktop();
+              if (typeof applyInitialWallpaper === 'function') {
+                applyInitialWallpaper();
+              }
             } else {
-              // Если еще не готово, повторяем попытку
-              setTimeout(initFunc, 50);
-              return;
-            }
-            if (typeof applyInitialWallpaper === 'function') {
-              applyInitialWallpaper();
+              // Еще не готово - повторяем попытку в следующем кадре
+              if (typeof requestAnimationFrame === 'function') {
+                requestAnimationFrame(waitForReady);
+              } else {
+                setTimeout(waitForReady, 16);
+              }
             }
           } catch (err) {
-            console.error('Error initializing desktop:', err);
-            // Все равно продолжаем - экран пароля уже скрыт
+            console.error('Error waiting for desktop ready:', err);
+            // Последняя попытка через небольшой таймаут
+            setTimeout(() => {
+              try {
+                if (typeof initDesktop === 'function') initDesktop();
+                if (typeof applyInitialWallpaper === 'function') applyInitialWallpaper();
+              } catch (e) {
+                console.error('Error in fallback init:', e);
+              }
+            }, 100);
           }
         };
         
-        // Используем небольшую задержку для Safari (гарантирует, что модули зарегистрированы)
-        setTimeout(initFunc, 100);
+        // Запускаем проверку готовности
+        if (typeof requestAnimationFrame === 'function') {
+          requestAnimationFrame(waitForReady);
+        } else {
+          setTimeout(waitForReady, 0);
+        }
       } catch (err) {
         console.error('Error entering desktop:', err);
         // Последний fallback: просто скрываем password screen
@@ -1923,52 +1940,109 @@ const layout = [
           return;
         }
         
-        const maxW = deskEl.clientWidth; const maxH = deskEl.clientHeight;
-      const root = getComputedStyle(document.documentElement);
-      const ICON = parseInt(root.getPropertyValue('--icon-size')) || 180;
-      const PAD = 24; // внутренний отступ от краёв
+        const maxW = deskEl.clientWidth;
+        const maxH = deskEl.clientHeight;
+        const root = getComputedStyle(document.documentElement);
+        const ICON = parseInt(root.getPropertyValue('--icon-size')) || 180;
+        const PAD = 24; // внутренний отступ от краёв
 
-      // helper: проценты → пиксели
-      const pctToPx = (p) => ({
-        x: Math.round((maxW - ICON) * (p.xPct/100)),
-        y: Math.round((maxH - ICON) * (p.yPct/100))
-      });
+        // Helper: ограничение координат в пределах видимой области
+        const clamp = (val, min, max) => Math.max(min, Math.min(max, val));
 
-      const taken = [];
-      const placeOne = () => {
-        for (let tries = 0; tries < 200; tries++) {
-          const x = Math.floor(Math.random() * (maxW - ICON - PAD*2)) + PAD;
-          const y = Math.floor(Math.random() * (maxH - ICON - PAD*2)) + PAD;
-          let ok = true;
-          for (const t of taken) {
-            if (Math.abs(x - t.x) < ICON * 0.9 && Math.abs(y - t.y) < ICON * 0.9) { ok = false; break; }
-          }
-          if (ok) return { x, y };
+        // Проверяем, что layout определен
+        if (!layout || !Array.isArray(layout)) {
+          console.error('Layout not defined');
+          return;
         }
-        return { x: PAD + Math.random() * (maxW - ICON - PAD*2), y: PAD + Math.random() * (maxH - ICON - PAD*2) };
-      };
 
-      // Проверяем, что layout определен
-      if (!layout || !Array.isArray(layout)) {
-        console.error('Layout not defined');
-        return;
-      }
+        // Разделяем иконки на топ-ряд и trash
+        const topRowIds = layout.filter(id => id !== 'trash');
+        const trashId = layout.find(id => id === 'trash');
 
-      layout.forEach((id) => {
-        try {
-          const mod = DesktopCore.registry.get(id);
-          if (!mod) {
-            console.warn('Module not found:', id);
-            return;
+        // Вычисляем позиции для топ-ряда (равномерно распределены)
+        const topRowY = PAD + 12; // 12px от верха
+        const availableWidth = maxW - 2 * PAD;
+        const step = topRowIds.length > 1 ? availableWidth / topRowIds.length : 0;
+
+        // Размещаем иконки топ-ряда
+        topRowIds.forEach((id, index) => {
+          try {
+            const mod = DesktopCore.registry.get(id);
+            if (!mod) {
+              console.warn('Module not found:', id);
+              return;
+            }
+
+            const saved = DesktopCore.getIconPosition(id, null);
+            let pos;
+
+            if (saved) {
+              // Используем сохраненную позицию с ограничением
+              pos = {
+                x: clamp(saved.x, PAD, maxW - ICON - PAD),
+                y: clamp(saved.y, PAD, maxH - ICON - PAD)
+              };
+            } else {
+              // Новая позиция: равномерно распределены в топ-ряду
+              const centerX = PAD + index * step + step / 2;
+              pos = {
+                x: clamp(Math.round(centerX - ICON / 2), PAD, maxW - ICON - PAD),
+                y: topRowY
+              };
+            }
+
+            DesktopCore.spawnIcon({
+              id: mod.id,
+              title: mod.title,
+              className: mod.iconClass,
+              iconUrl: mod.iconUrl,
+              x: pos.x,
+              y: pos.y,
+              onOpen: mod.onOpen,
+              contextItems: mod.contextItems
+            });
+          } catch (err) {
+            console.error('Error creating icon for', id, ':', err);
           }
-          const saved = DesktopCore.getIconPosition(id, null);
-          const pos = saved || (USE_FIXED_LAYOUT && FIXED_POS[mod.id] ? pctToPx(FIXED_POS[mod.id]) : placeOne());
-          taken.push(pos);
-          DesktopCore.spawnIcon({ id: mod.id, title: mod.title, className: mod.iconClass, iconUrl: mod.iconUrl, x: pos.x, y: pos.y, onOpen: mod.onOpen, contextItems: mod.contextItems });
-        } catch (err) {
-          console.error('Error creating icon for', id, ':', err);
+        });
+
+        // Размещаем Trash в правом нижнем углу
+        if (trashId) {
+          try {
+            const mod = DesktopCore.registry.get(trashId);
+            if (mod) {
+              const saved = DesktopCore.getIconPosition(trashId, null);
+              let pos;
+
+              if (saved) {
+                // Используем сохраненную позицию с ограничением
+                pos = {
+                  x: clamp(saved.x, PAD, maxW - ICON - PAD),
+                  y: clamp(saved.y, PAD, maxH - ICON - PAD)
+                };
+              } else {
+                // Новая позиция: правый нижний угол
+                pos = {
+                  x: maxW - ICON - PAD,
+                  y: maxH - ICON - PAD
+                };
+              }
+
+              DesktopCore.spawnIcon({
+                id: mod.id,
+                title: mod.title,
+                className: mod.iconClass,
+                iconUrl: mod.iconUrl,
+                x: pos.x,
+                y: pos.y,
+                onOpen: mod.onOpen,
+                contextItems: mod.contextItems
+              });
+            }
+          } catch (err) {
+            console.error('Error creating trash icon:', err);
+          }
         }
-      });
       } catch (err) {
         console.error('Error in initDesktop:', err);
       }
