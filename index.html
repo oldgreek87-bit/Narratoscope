@@ -1875,17 +1875,43 @@ const layout = [
         }
         
         // Инициализируем рабочий стол и применяем обои
-        // Простой и надежный подход для Safari
-        const initDesktopOnce = () => {
+        // Надежный подход для Safari с несколькими попытками
+        let initAttempts = 0;
+        const maxAttempts = 15;
+        
+        const tryInitDesktop = () => {
           try {
             const deskEl = document.querySelector('.desktop');
-            if (!deskEl) return;
+            if (!deskEl) {
+              if (initAttempts < maxAttempts) {
+                initAttempts++;
+                setTimeout(tryInitDesktop, 100);
+              }
+              return;
+            }
             
             // Проверяем, что иконки еще не созданы
-            if (deskEl.querySelectorAll('.icon').length > 0) return;
+            if (deskEl.querySelectorAll('.icon').length > 0) {
+              return; // Уже созданы
+            }
             
-            // Проверяем, что DesktopCore готов
-            if (typeof DesktopCore === 'undefined' || !DesktopCore || !DesktopCore.registry || DesktopCore.registry.size === 0) return;
+            // Проверяем, что DesktopCore готов (более мягкая проверка для Safari)
+            if (typeof DesktopCore === 'undefined' || !DesktopCore || !DesktopCore.registry) {
+              if (initAttempts < maxAttempts) {
+                initAttempts++;
+                setTimeout(tryInitDesktop, 100);
+              }
+              return;
+            }
+            
+            // Проверяем, что есть хотя бы несколько модулей (не обязательно все)
+            if (DesktopCore.registry.size < 3) {
+              if (initAttempts < maxAttempts) {
+                initAttempts++;
+                setTimeout(tryInitDesktop, 100);
+              }
+              return;
+            }
             
             // Все готово - инициализируем
             if (typeof initDesktop === 'function') {
@@ -1896,13 +1922,17 @@ const layout = [
             }
           } catch (err) {
             console.error('Error initializing desktop:', err);
+            if (initAttempts < maxAttempts) {
+              initAttempts++;
+              setTimeout(tryInitDesktop, 150);
+            }
           }
         };
         
-        // Запускаем инициализацию с задержкой для Safari (увеличена для надежности)
+        // Запускаем инициализацию с задержкой для Safari
         setTimeout(() => {
-          initDesktopOnce();
-        }, 250);
+          tryInitDesktop();
+        }, 300);
       } catch (err) {
         console.error('Error entering desktop:', err);
         // Последний fallback: просто скрываем password screen
