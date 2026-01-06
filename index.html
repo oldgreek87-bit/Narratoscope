@@ -2076,6 +2076,11 @@ const layout = [
 
     function checkPassword() {
       try {
+        const passwordInputs = [
+          document.getElementById('pwd1'),
+          document.getElementById('pwd2'),
+          document.getElementById('pwd3')
+        ];
         // Безопасная проверка наличия элементов
         if (!passwordInputs || passwordInputs.length === 0) {
           console.error('Password inputs not found');
