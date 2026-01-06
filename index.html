@@ -2101,12 +2101,16 @@ const layout = [
     /* ===== Password Screen ===== */
     const PASSWORD_WORDS = ['love', 'pretend', 'imagine'];
     const passwordScreen = document.getElementById('passwordScreen');
-    const passwordInputs = ['pwd1', 'pwd2', 'pwd3'].map(id => document.getElementById(id));
     const passwordSubmit = document.getElementById('passwordSubmit');
     const passwordError = document.getElementById('passwordError');
 
     function checkPassword() {
       try {
+        // Локально берем поля ввода, чтобы Safari не падал, если внешняя ссылка недоступна
+        const passwordInputs = ['pwd1', 'pwd2', 'pwd3'].map(id => document.getElementById(id));
+        const words = (typeof PASSWORD_WORDS !== 'undefined' && Array.isArray(PASSWORD_WORDS))
+          ? PASSWORD_WORDS
+          : ['love', 'pretend', 'imagine'];
         // Безопасная проверка наличия элементов
         if (!passwordInputs || passwordInputs.length === 0) {
           console.error('Password inputs not found');
@@ -2114,7 +2118,7 @@ const layout = [
         }
         
         const values = passwordInputs.map(inp => inp ? inp.value.trim().toLowerCase() : '');
-        const correct = PASSWORD_WORDS.every((word, i) => values[i] === word);
+        const correct = words.every((word, i) => values[i] === word);
         
         if (correct) {
           // Всегда вызываем enterDesktop, даже если есть ошибки внутри
@@ -2160,13 +2164,13 @@ const layout = [
     }
 
     passwordSubmit.addEventListener('click', checkPassword);
-    passwordInputs.forEach((inp, i) => {
+    ['pwd1', 'pwd2', 'pwd3'].map(id => document.getElementById(id)).forEach((inp, i, arr) => {
       // Используем keydown вместо keypress для лучшей совместимости (особенно на Mac)
       inp.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' || e.keyCode === 13) {
           e.preventDefault(); // Предотвращаем стандартное поведение
-          if (i < passwordInputs.length - 1) {
-            passwordInputs[i + 1].focus();
+          if (i < arr.length - 1) {
+            arr[i + 1]?.focus();
           } else {
             checkPassword();
           }
@@ -2174,9 +2178,8 @@ const layout = [
       });
     });
     // Фокусируемся на первом поле только если оно существует
-    if (passwordInputs[0]) {
-      passwordInputs[0].focus();
-    }
+    const firstPwd = document.getElementById('pwd1');
+    if (firstPwd) firstPwd.focus();
 
     window.addEventListener('load', () => {
       if (!document.querySelector('.desktop .icon')) {
