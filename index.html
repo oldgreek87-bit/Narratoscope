@@ -1863,6 +1863,17 @@ const layout = [
         if (passwordScreen) {
           passwordScreen.classList.add('hidden');
         }
+
+        // Safari-safe icon init: wait for layout, retry a few times
+        let tries = 0;
+        const maxTries = 30;
+        const pump = () => {
+          tries++;
+          const ok = ensureDesktopIcons();
+          if (ok || tries >= maxTries) return;
+          requestAnimationFrame(pump);
+        };
+        requestAnimationFrame(() => requestAnimationFrame(pump));
         
         // Запускаем boot sequence (анимация загрузки) - если функция доступна
         if (typeof bootSequence === 'function') {
@@ -1940,6 +1951,26 @@ const layout = [
           passwordScreen.classList.add('hidden');
         }
       }
+    }
+
+    // Проверка готовности и запуск иконок (для Safari/resize)
+    function ensureDesktopIcons() {
+      const deskEl = document.querySelector('.desktop');
+      if (!deskEl) return false;
+    
+      // если уже есть иконки — ничего не делаем
+      if (deskEl.querySelector('.icon')) return true;
+    
+      // Safari: иногда размеры 0 в момент вызова
+      const r = deskEl.getBoundingClientRect();
+      const ready = r.width > 200 && r.height > 200;
+    
+      if (!ready) return false;
+    
+      // пробуем создать иконки
+      try { initDesktop(); } catch (e) { console.error(e); }
+    
+      return !!deskEl.querySelector('.icon');
     }
 
     function initDesktop() {
@@ -2076,25 +2107,14 @@ const layout = [
 
     function checkPassword() {
       try {
-        // Локально определяем поля ввода, чтобы исключить ReferenceError в Safari
-        const passwordInputs = [
-          document.getElementById('pwd1'),
-          document.getElementById('pwd2'),
-          document.getElementById('pwd3')
-        ];
         // Безопасная проверка наличия элементов
         if (!passwordInputs || passwordInputs.length === 0) {
           console.error('Password inputs not found');
           return;
         }
         
-        // Защита от отсутствия PASSWORD_WORDS в Safari
-        const words = (typeof PASSWORD_WORDS !== 'undefined' && Array.isArray(PASSWORD_WORDS))
-          ? PASSWORD_WORDS
-          : ['love', 'pretend', 'imagine'];
-
         const values = passwordInputs.map(inp => inp ? inp.value.trim().toLowerCase() : '');
-        const correct = words.every((word, i) => values[i] === word);
+        const correct = PASSWORD_WORDS.every((word, i) => values[i] === word);
         
         if (correct) {
           // Всегда вызываем enterDesktop, даже если есть ошибки внутри
@@ -2157,6 +2177,18 @@ const layout = [
     if (passwordInputs[0]) {
       passwordInputs[0].focus();
     }
+
+    window.addEventListener('load', () => {
+      if (!document.querySelector('.desktop .icon')) {
+        ensureDesktopIcons();
+      }
+    });
+
+    window.addEventListener('resize', () => {
+      if (!document.querySelector('.desktop .icon')) {
+        ensureDesktopIcons();
+      }
+    });
     } // end if (!isMobileDevice)
   </script>
 
