@@ -1866,10 +1866,15 @@ const layout = [
         }
         
         // Инициализируем рабочий стол и применяем обои
-        // Используем "wait until ready" стратегию для macOS/Safari
-        const waitForReady = () => {
+        // Используем ResizeObserver для Safari-safe readiness check
+        let initDesktopAttempts = 0;
+        const MAX_INIT_ATTEMPTS = 2;
+        
+        const checkReadiness = () => {
           try {
             const deskEl = document.querySelector('.desktop');
+            if (!deskEl) return false;
+            
             const root = getComputedStyle(document.documentElement);
             const ICON = parseInt(root.getPropertyValue('--icon-size')) || 180;
             
@@ -1879,43 +1884,108 @@ const layout = [
                                    DesktopCore.registry && 
                                    DesktopCore.registry.size > 0;
             
-            const isDesktopReady = deskEl && 
-                                  deskEl.clientWidth > ICON && 
-                                  deskEl.clientHeight > ICON;
+            const isDesktopReady = deskEl.clientWidth > ICON * 2 && 
+                                  deskEl.clientHeight > ICON * 2;
             
-            if (isRegistryReady && isDesktopReady && typeof initDesktop === 'function') {
-              // Готово - инициализируем
+            // Проверяем, не созданы ли уже иконки
+            const iconsExist = deskEl.querySelectorAll('.icon').length > 0;
+            
+            return isRegistryReady && isDesktopReady && !iconsExist;
+          } catch (err) {
+            console.error('Error checking readiness:', err);
+            return false;
+          }
+        };
+        
+        const attemptInitDesktop = () => {
+          // Проверяем, не созданы ли уже иконки (защита от дублирования)
+          const deskEl = document.querySelector('.desktop');
+          if (deskEl && deskEl.querySelectorAll('.icon').length > 0) {
+            return; // Иконки уже созданы
+          }
+          
+          if (initDesktopAttempts >= MAX_INIT_ATTEMPTS) {
+            return; // Превышено количество попыток
+          }
+          
+          if (checkReadiness() && typeof initDesktop === 'function') {
+            try {
               initDesktop();
+              initDesktopAttempts++;
               if (typeof applyInitialWallpaper === 'function') {
                 applyInitialWallpaper();
               }
+            } catch (err) {
+              console.error('Error in initDesktop:', err);
+              initDesktopAttempts++;
+            }
+          } else if (initDesktopAttempts < MAX_INIT_ATTEMPTS) {
+            // Еще не готово - попробуем еще раз в следующем кадре
+            initDesktopAttempts++;
+            if (typeof requestAnimationFrame === 'function') {
+              requestAnimationFrame(attemptInitDesktop);
             } else {
-              // Еще не готово - повторяем попытку в следующем кадре
+              setTimeout(attemptInitDesktop, 16);
+            }
+          }
+        };
+        
+        // Используем ResizeObserver для отслеживания изменений размера (лучше для Safari)
+        const deskEl = document.querySelector('.desktop');
+        if (deskEl && typeof ResizeObserver !== 'undefined') {
+          let resizeObserver = null;
+          const onResize = () => {
+            if (checkReadiness()) {
+              attemptInitDesktop();
+              // Отключаем после успешной инициализации или превышения попыток
+              if (resizeObserver) {
+                const iconsExist = deskEl.querySelectorAll('.icon').length > 0;
+                if (iconsExist || initDesktopAttempts >= MAX_INIT_ATTEMPTS) {
+                  resizeObserver.disconnect();
+                  resizeObserver = null;
+                }
+              }
+            }
+          };
+          
+          resizeObserver = new ResizeObserver(onResize);
+          resizeObserver.observe(deskEl);
+          
+          // Также запускаем немедленную проверку
+          if (typeof requestAnimationFrame === 'function') {
+            requestAnimationFrame(attemptInitDesktop);
+          } else {
+            setTimeout(attemptInitDesktop, 0);
+          }
+        } else {
+          // Fallback на requestAnimationFrame loop если ResizeObserver недоступен
+          const waitForReady = () => {
+            if (checkReadiness() && typeof initDesktop === 'function') {
+              try {
+                initDesktop();
+                initDesktopAttempts++;
+                if (typeof applyInitialWallpaper === 'function') {
+                  applyInitialWallpaper();
+                }
+              } catch (err) {
+                console.error('Error in initDesktop:', err);
+                initDesktopAttempts++;
+              }
+            } else if (initDesktopAttempts < MAX_INIT_ATTEMPTS) {
+              initDesktopAttempts++;
               if (typeof requestAnimationFrame === 'function') {
                 requestAnimationFrame(waitForReady);
               } else {
                 setTimeout(waitForReady, 16);
               }
             }
-          } catch (err) {
-            console.error('Error waiting for desktop ready:', err);
-            // Последняя попытка через небольшой таймаут
-            setTimeout(() => {
-              try {
-                if (typeof initDesktop === 'function') initDesktop();
-                if (typeof applyInitialWallpaper === 'function') applyInitialWallpaper();
-              } catch (e) {
-                console.error('Error in fallback init:', e);
-              }
-            }, 100);
+          };
+          
+          if (typeof requestAnimationFrame === 'function') {
+            requestAnimationFrame(waitForReady);
+          } else {
+            setTimeout(waitForReady, 0);
           }
-        };
-        
-        // Запускаем проверку готовности
-        if (typeof requestAnimationFrame === 'function') {
-          requestAnimationFrame(waitForReady);
-        } else {
-          setTimeout(waitForReady, 0);
         }
       } catch (err) {
         console.error('Error entering desktop:', err);
@@ -1940,11 +2010,23 @@ const layout = [
           return;
         }
         
+        // Защита от дублирования: проверяем, не созданы ли уже иконки
+        const existingIcons = deskEl.querySelectorAll('.icon');
+        if (existingIcons.length > 0) {
+          return; // Иконки уже созданы, выходим
+        }
+        
         const maxW = deskEl.clientWidth;
         const maxH = deskEl.clientHeight;
         const root = getComputedStyle(document.documentElement);
         const ICON = parseInt(root.getPropertyValue('--icon-size')) || 180;
         const PAD = 24; // внутренний отступ от краёв
+
+        // Валидация размеров (Safari может вернуть 0)
+        if (maxW <= ICON * 2 || maxH <= ICON * 2) {
+          console.warn('Desktop dimensions too small, retrying later');
+          return;
+        }
 
         // Helper: ограничение координат в пределах видимой области
         const clamp = (val, min, max) => Math.max(min, Math.min(max, val));
