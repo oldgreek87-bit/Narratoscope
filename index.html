@@ -1551,7 +1551,7 @@ A.`,
 
       // Document file in Trash (defined in closure scope for restored icon access)
       const trashFile = {
-        name: 'draft_editorial_v3_FINAL.docx',
+        name: 'editorial_v2.doc',
         content: `# What Deserves to Be Printed?
 ## (or: why the hell am I starting a magazine in 2026?)
 
@@ -1703,7 +1703,7 @@ And maybe that's all a magazine needs to be now. Not a format. Not a business mo
         footer.style.borderTop = '1px solid var(--ink)';
         footer.style.fontSize = '12px';
         footer.style.color = '#666';
-        footer.textContent = 'draft_editorial_v3_FINAL.docx | Last modified: 2:34 AM | Location: Trash';
+        footer.textContent = 'editorial_v2.doc | Last modified: 2:34 AM | Location: Trash';
 
         docWrap.appendChild(columnsContainer);
         docWrap.appendChild(footer);
@@ -1766,8 +1766,21 @@ And maybe that's all a magazine needs to be now. Not a format. Not a business mo
                   // Mark as restored
                   trashFileRestored = true;
                   
+                  // Calculate bottom-left position
+                  const deskEl = document.querySelector('.desktop');
+                  const root = getComputedStyle(document.documentElement);
+                  const ICON = parseInt(root.getPropertyValue('--icon-size')) || 180;
+                  const PAD = 24;
+                  const maxH = deskEl ? deskEl.clientHeight : window.innerHeight;
+                  
+                  // Position near bottom-left corner
+                  const bottomLeftPos = {
+                    x: PAD,
+                    y: maxH - ICON - PAD
+                  };
+                  
                   // Restore: create desktop icon
-                  const pos = DesktopCore.getIconPosition('restored_' + trashFile.name, { x: 100, y: 200 });
+                  const pos = DesktopCore.getIconPosition('restored_' + trashFile.name, bottomLeftPos);
                   const iconEl = DesktopCore.spawnIcon({
                     id: 'restored_' + trashFile.name,
                     title: trashFile.name,
@@ -1786,14 +1799,8 @@ And maybe that's all a magazine needs to be now. Not a format. Not a business mo
                     }
                   });
                   
-                  // Add text truncation to desktop icon label
-                  const labelEl = iconEl.querySelector('.label');
-                  if (labelEl) {
-                    labelEl.style.overflow = 'hidden';
-                    labelEl.style.textOverflow = 'ellipsis';
-                    labelEl.style.whiteSpace = 'nowrap';
-                    labelEl.style.maxWidth = '168px';
-                  }
+                  // Ensure icon is not in selected state and uses default label styling
+                  iconEl.classList.remove('selected');
                   
                   // Remove from Trash (remove the cell)
                   cell.remove();
@@ -1938,7 +1945,7 @@ const layout = [
           return;
         }
         
-        const deskEl = document.querySelector('.desktop');
+      const deskEl = document.querySelector('.desktop');
         if (!deskEl) {
           return;
         }
@@ -1950,9 +1957,9 @@ const layout = [
         
         const maxW = deskEl.clientWidth;
         const maxH = deskEl.clientHeight;
-        const root = getComputedStyle(document.documentElement);
-        const ICON = parseInt(root.getPropertyValue('--icon-size')) || 180;
-        const PAD = 24; // внутренний отступ от краёв
+      const root = getComputedStyle(document.documentElement);
+      const ICON = parseInt(root.getPropertyValue('--icon-size')) || 180;
+      const PAD = 24; // внутренний отступ от краёв
 
         // Helper: ограничение координат в пределах видимой области
         const clamp = (val, min, max) => Math.max(min, Math.min(max, val));
@@ -1981,7 +1988,7 @@ const layout = [
               return;
             }
 
-            const saved = DesktopCore.getIconPosition(id, null);
+        const saved = DesktopCore.getIconPosition(id, null);
             let pos;
 
             if (saved) {
