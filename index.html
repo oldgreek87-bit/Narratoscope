@@ -1866,127 +1866,62 @@ const layout = [
         }
         
         // Инициализируем рабочий стол и применяем обои
-        // Используем ResizeObserver для Safari-safe readiness check
-        let initDesktopAttempts = 0;
-        const MAX_INIT_ATTEMPTS = 2;
-        
-        const checkReadiness = () => {
+        // Простой и надежный подход для Safari
+        const initDesktopWithRetry = (attempt = 0) => {
           try {
             const deskEl = document.querySelector('.desktop');
-            if (!deskEl) return false;
             
+            // Проверяем базовые условия
+            if (!deskEl) {
+              if (attempt < 10) {
+                setTimeout(() => initDesktopWithRetry(attempt + 1), 50);
+              }
+              return;
+            }
+            
+            // Проверяем, что DesktopCore готов
+            if (typeof DesktopCore === 'undefined' || !DesktopCore || !DesktopCore.registry || DesktopCore.registry.size === 0) {
+              if (attempt < 10) {
+                setTimeout(() => initDesktopWithRetry(attempt + 1), 50);
+              }
+              return;
+            }
+            
+            // Проверяем, что иконки еще не созданы
+            if (deskEl.querySelectorAll('.icon').length > 0) {
+              return; // Уже созданы
+            }
+            
+            // Проверяем размеры рабочего стола
             const root = getComputedStyle(document.documentElement);
             const ICON = parseInt(root.getPropertyValue('--icon-size')) || 180;
             
-            // Проверяем условия готовности
-            const isRegistryReady = typeof DesktopCore !== 'undefined' && 
-                                   DesktopCore && 
-                                   DesktopCore.registry && 
-                                   DesktopCore.registry.size > 0;
+            if (deskEl.clientWidth < ICON || deskEl.clientHeight < ICON) {
+              if (attempt < 10) {
+                setTimeout(() => initDesktopWithRetry(attempt + 1), 50);
+              }
+              return;
+            }
             
-            const isDesktopReady = deskEl.clientWidth > ICON * 2 && 
-                                  deskEl.clientHeight > ICON * 2;
-            
-            // Проверяем, не созданы ли уже иконки
-            const iconsExist = deskEl.querySelectorAll('.icon').length > 0;
-            
-            return isRegistryReady && isDesktopReady && !iconsExist;
-          } catch (err) {
-            console.error('Error checking readiness:', err);
-            return false;
-          }
-        };
-        
-        const attemptInitDesktop = () => {
-          // Проверяем, не созданы ли уже иконки (защита от дублирования)
-          const deskEl = document.querySelector('.desktop');
-          if (deskEl && deskEl.querySelectorAll('.icon').length > 0) {
-            return; // Иконки уже созданы
-          }
-          
-          if (initDesktopAttempts >= MAX_INIT_ATTEMPTS) {
-            return; // Превышено количество попыток
-          }
-          
-          if (checkReadiness() && typeof initDesktop === 'function') {
-            try {
+            // Все готово - инициализируем
+            if (typeof initDesktop === 'function') {
               initDesktop();
-              initDesktopAttempts++;
-              if (typeof applyInitialWallpaper === 'function') {
-                applyInitialWallpaper();
-              }
-            } catch (err) {
-              console.error('Error in initDesktop:', err);
-              initDesktopAttempts++;
             }
-          } else if (initDesktopAttempts < MAX_INIT_ATTEMPTS) {
-            // Еще не готово - попробуем еще раз в следующем кадре
-            initDesktopAttempts++;
-            if (typeof requestAnimationFrame === 'function') {
-              requestAnimationFrame(attemptInitDesktop);
-            } else {
-              setTimeout(attemptInitDesktop, 16);
+            if (typeof applyInitialWallpaper === 'function') {
+              applyInitialWallpaper();
+            }
+          } catch (err) {
+            console.error('Error initializing desktop:', err);
+            if (attempt < 10) {
+              setTimeout(() => initDesktopWithRetry(attempt + 1), 100);
             }
           }
         };
         
-        // Используем ResizeObserver для отслеживания изменений размера (лучше для Safari)
-        const deskEl = document.querySelector('.desktop');
-        if (deskEl && typeof ResizeObserver !== 'undefined') {
-          let resizeObserver = null;
-          const onResize = () => {
-            if (checkReadiness()) {
-              attemptInitDesktop();
-              // Отключаем после успешной инициализации или превышения попыток
-              if (resizeObserver) {
-                const iconsExist = deskEl.querySelectorAll('.icon').length > 0;
-                if (iconsExist || initDesktopAttempts >= MAX_INIT_ATTEMPTS) {
-                  resizeObserver.disconnect();
-                  resizeObserver = null;
-                }
-              }
-            }
-          };
-          
-          resizeObserver = new ResizeObserver(onResize);
-          resizeObserver.observe(deskEl);
-          
-          // Также запускаем немедленную проверку
-          if (typeof requestAnimationFrame === 'function') {
-            requestAnimationFrame(attemptInitDesktop);
-          } else {
-            setTimeout(attemptInitDesktop, 0);
-          }
-        } else {
-          // Fallback на requestAnimationFrame loop если ResizeObserver недоступен
-          const waitForReady = () => {
-            if (checkReadiness() && typeof initDesktop === 'function') {
-              try {
-                initDesktop();
-                initDesktopAttempts++;
-                if (typeof applyInitialWallpaper === 'function') {
-                  applyInitialWallpaper();
-                }
-              } catch (err) {
-                console.error('Error in initDesktop:', err);
-                initDesktopAttempts++;
-              }
-            } else if (initDesktopAttempts < MAX_INIT_ATTEMPTS) {
-              initDesktopAttempts++;
-              if (typeof requestAnimationFrame === 'function') {
-                requestAnimationFrame(waitForReady);
-              } else {
-                setTimeout(waitForReady, 16);
-              }
-            }
-          };
-          
-          if (typeof requestAnimationFrame === 'function') {
-            requestAnimationFrame(waitForReady);
-          } else {
-            setTimeout(waitForReady, 0);
-          }
-        }
+        // Запускаем инициализацию с небольшой задержкой для Safari
+        setTimeout(() => {
+          initDesktopWithRetry(0);
+        }, 150);
       } catch (err) {
         console.error('Error entering desktop:', err);
         // Последний fallback: просто скрываем password screen
@@ -2000,20 +1935,17 @@ const layout = [
       try {
         // Проверяем, что DesktopCore доступен
         if (typeof DesktopCore === 'undefined' || !DesktopCore || !DesktopCore.registry) {
-          console.error('DesktopCore not available');
           return;
         }
         
         const deskEl = document.querySelector('.desktop');
         if (!deskEl) {
-          console.error('Desktop element not found');
           return;
         }
         
         // Защита от дублирования: проверяем, не созданы ли уже иконки
-        const existingIcons = deskEl.querySelectorAll('.icon');
-        if (existingIcons.length > 0) {
-          return; // Иконки уже созданы, выходим
+        if (deskEl.querySelectorAll('.icon').length > 0) {
+          return;
         }
         
         const maxW = deskEl.clientWidth;
@@ -2021,12 +1953,6 @@ const layout = [
         const root = getComputedStyle(document.documentElement);
         const ICON = parseInt(root.getPropertyValue('--icon-size')) || 180;
         const PAD = 24; // внутренний отступ от краёв
-
-        // Валидация размеров (Safari может вернуть 0)
-        if (maxW <= ICON * 2 || maxH <= ICON * 2) {
-          console.warn('Desktop dimensions too small, retrying later');
-          return;
-        }
 
         // Helper: ограничение координат в пределах видимой области
         const clamp = (val, min, max) => Math.max(min, Math.min(max, val));
