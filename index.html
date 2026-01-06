@@ -2076,6 +2076,7 @@ const layout = [
 
     function checkPassword() {
       try {
+        // Локально определяем поля ввода, чтобы исключить ReferenceError в Safari
         const passwordInputs = [
           document.getElementById('pwd1'),
           document.getElementById('pwd2'),
