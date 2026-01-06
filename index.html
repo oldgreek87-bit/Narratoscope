@@ -2088,8 +2088,13 @@ const layout = [
           return;
         }
         
+        // Защита от отсутствия PASSWORD_WORDS в Safari
+        const words = (typeof PASSWORD_WORDS !== 'undefined' && Array.isArray(PASSWORD_WORDS))
+          ? PASSWORD_WORDS
+          : ['love', 'pretend', 'imagine'];
+
         const values = passwordInputs.map(inp => inp ? inp.value.trim().toLowerCase() : '');
-        const correct = PASSWORD_WORDS.every((word, i) => values[i] === word);
+        const correct = words.every((word, i) => values[i] === word);
         
         if (correct) {
           // Всегда вызываем enterDesktop, даже если есть ошибки внутри
